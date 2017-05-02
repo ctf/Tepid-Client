@@ -1,0 +1,32 @@
+group 'ca.mcgill.science.ctf.tepid'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    compile 'com.github.CTFMcGill:TEPID-commons:06d31a0f550e30261bdfec52efb93c282f4a608e'
+
+    // https://mvnrepository.com/artifact/net.sf.jacob-project/jacob
+    compile group: 'net.sf.jacob-project', name: 'jacob', version: '1.14.3'
+
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray-Dorkbox-Util
+    compile group: 'com.dorkbox', name: 'SystemTray-Dorkbox-Util', version: '2.20'
+
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray TODO update
+    compile group: 'com.dorkbox', name: 'SystemTray', version: '2.14'
+
+    // https://mvnrepository.com/artifact/net.java.dev.jna/jna
+    compile group: 'net.java.dev.jna', name: 'jna', version: '4.4.0'
+
+    // https://mvnrepository.com/artifact/net.java.dev.jna/jna-platform
+    compile group: 'net.java.dev.jna', name: 'jna-platform', version: '4.4.0'
+}

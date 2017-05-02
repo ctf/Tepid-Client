@@ -1,5 +1,4 @@
 group 'ca.mcgill.science.ctf.tepid'
-version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 
@@ -13,13 +12,15 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 
-    compile 'com.github.CTFMcGill:TEPID-commons:06d31a0f550e30261bdfec52efb93c282f4a608e'
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+
+//    compile 'com.github.CTFMcGill:TEPID-commons:06d31a0f550e30261bdfec52efb93c282f4a608e'
 
     // https://mvnrepository.com/artifact/net.sf.jacob-project/jacob
-    compile group: 'net.sf.jacob-project', name: 'jacob', version: '1.14.3'
+//    compile group: 'net.sf.jacob-project', name: 'jacob', version: '1.14.3'
 
     // https://mvnrepository.com/artifact/com.dorkbox/SystemTray-Dorkbox-Util
-    compile group: 'com.dorkbox', name: 'SystemTray-Dorkbox-Util', version: '2.20'
+    compile group: 'com.dorkbox', name: 'SystemTray-Dorkbox-Util', version: '2.14'
 
     // https://mvnrepository.com/artifact/com.dorkbox/SystemTray TODO update
     compile group: 'com.dorkbox', name: 'SystemTray', version: '2.14'
@@ -29,4 +30,74 @@ dependencies {
 
     // https://mvnrepository.com/artifact/net.java.dev.jna/jna-platform
     compile group: 'net.java.dev.jna', name: 'jna-platform', version: '4.4.0'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+
+    // https://mvnrepository.com/artifact/org.eclipse/swt
+//    compile group: 'org.eclipse', name: 'swt', version: '4.6.1'
+
+    //COMMONS
+
+    // https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils
+    compile group: 'commons-beanutils', name: 'commons-beanutils', version: '1.8.3'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.core/jersey-common
+    compile group: 'org.glassfish.jersey.core', name: 'jersey-common', version: '2.25'
+
+    // https://mvnrepository.com/artifact/org.glassfish.hk2.external/aopalliance-repackaged
+    compile group: 'org.glassfish.hk2.external', name: 'aopalliance-repackaged', version: '2.4.0'
+
+    // https://mvnrepository.com/artifact/log4j/log4j
+//    compile group: 'log4j', name: 'log4j', version: '1.2.17'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.containers/jersey-container-servlet
+    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-servlet', version: '2.25'
+
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-email
+    compile group: 'org.apache.commons', name: 'commons-email', version: '1.4'
+
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.module/jackson-module-jaxb-annotations
+    compile group: 'com.fasterxml.jackson.module', name: 'jackson-module-jaxb-annotations', version: '2.5.4'
+
+    // https://mvnrepository.com/artifact/org.glassfish.hk2/hk2-locator
+//    compile group: 'org.glassfish.hk2', name: 'hk2-locator', version: '2.4.0'
+
+    // https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api
+    compile group: 'javax.servlet', name: 'javax.servlet-api', version: '3.0.1'
+
+    // https://mvnrepository.com/artifact/org.ow2.asm/asm-debug-all
+//    compile group: 'org.ow2.asm', name: 'asm-debug-all', version: '5.0.4'
+
+    // https://mvnrepository.com/artifact/org.tukaani/xz
+    compile group: 'org.tukaani', name: 'xz', version: '1.5'
+
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider
+    compile group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.5.4'
+
+    // https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api
+    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.media/jersey-media-json-jackson
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.22.1'
+
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.5.4'
+
+}
+
+task copyBuilder(type: Copy) {
+    into "$buildDir/libs"
+    from "files"
+}
+
+task copyLibs(type: Copy) {
+    into "$buildDir/libs/libs"
+    from configurations.runtime
+}
+
+jar.baseName = 'tepid'
+
+task buildTepid(type: GradleBuild) {
+    tasks = ['copyBuilder', 'copyLibs', 'jar']
 }

@@ -4,7 +4,6 @@
 ## Directory-based project format:
 .idea/
 *.iml
-libs/
 
 
 *.pydevproject

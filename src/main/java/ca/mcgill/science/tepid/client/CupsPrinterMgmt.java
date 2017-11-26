@@ -7,33 +7,42 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
-public class CupsPrinterMgmt {
+public class CupsPrinterMgmt implements PrinterMgmt {
 
-    private static String user = System.getProperty("user.name");
+    private String user = System.getProperty("user.name");
 
-    public static void addPrinter(String queueName, String id) {
-        try {
-            File tmpPpd = File.createTempFile("tepid", ".ppd");
-            Files.copy(Utils.getResourceAsStream("XeroxWorkCentre7556.ppd"), tmpPpd.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            ProcessBuilder pb = new ProcessBuilder(new String[]{"lpadmin", "-p", queueName + "-" + user, "-E", "-v", "lpd://localhost:8515/" + id, "-P", tmpPpd.getAbsolutePath()});
-            pb.inheritIO();
-            Process p = pb.start();
-            p.waitFor();
-            tmpPpd.delete();
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public boolean preBind() {
+        return true; // Purposely blank
     }
 
-    public static void deletePrinter(String queueName) {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(new String[]{"lpadmin", "-x", queueName + "-" + user});
-            pb.inheritIO();
-            Process p = pb.start();
-            p.waitFor();
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public String tepidDataPath() {
+        return System.getProperty("user.home") + "/.tepid";
+    }
+
+    @Override
+    public void addPrinterImpl(String queue, String port, boolean isDefault) throws IOException, InterruptedException {
+        File tmpPpd = File.createTempFile("tepid", ".ppd");
+        Files.copy(Utils.getResourceAsStream("XeroxWorkCentre7556.ppd"), tmpPpd.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        ProcessBuilder pb = new ProcessBuilder("sudo", "lpadmin", "-p", queue + "-" + user, "-E", "-v", "lpd://localhost:8515/" + port, "-P", tmpPpd.getAbsolutePath());
+        pb.inheritIO();
+        Process p = pb.start();
+        p.waitFor();
+        tmpPpd.delete();
+    }
+
+    @Override
+    public void deletePrinterImpl(String queue, String port) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder("sudo", "lpadmin", "-x", queue + "-" + user);
+        pb.inheritIO();
+        Process p = pb.start();
+        p.waitFor();
+    }
+
+    @Override
+    public void cleanPrinters() {
+        // Purposely empty
     }
 
 }

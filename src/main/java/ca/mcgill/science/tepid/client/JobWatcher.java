@@ -66,7 +66,7 @@ public class JobWatcher extends Thread {
                     }
                     try {
                         Thread.sleep(10000);
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ignored) {
                     }
                     n.close();
                     break;
@@ -94,7 +94,7 @@ public class JobWatcher extends Thread {
                         n.setQuota(creditsBefore, credits, "You have " + credits + " pages left", "\"" + j.truncateName(28) + "\" sent to printer " + destination.getName() + ".");
                         try {
                             Thread.sleep(10000);
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException ignored) {
                         }
                         n.close();
                         break;

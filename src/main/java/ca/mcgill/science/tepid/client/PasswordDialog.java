@@ -37,16 +37,14 @@ public class PasswordDialog extends JFrame {
         new Thread("AsyncInvoke") {
             @Override
             public void run() {
-                EventQueue.invokeLater(new Runnable() {
-                    public void run() {
-                        try {
-                            final PasswordDialog frame = new PasswordDialog(q);
-                            frame.setVisible(true);
-                            frame.toFront();
-                            frame.requestFocus();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                EventQueue.invokeLater(() -> {
+                    try {
+                        final PasswordDialog frame = new PasswordDialog(q);
+                        frame.setVisible(true);
+                        frame.toFront();
+                        frame.requestFocus();
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 });
             }
@@ -117,13 +115,10 @@ public class PasswordDialog extends JFrame {
         btnOk.setBounds(218, 194, 94, 26);
         btnOk.setForeground(new Color(0x0));
         btnOk.setFont(new Font("Arial", Font.PLAIN, 12));
-        btnOk.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                ok = true;
-                PasswordDialog.this.dispatchEvent(new WindowEvent(PasswordDialog.this, WindowEvent.WINDOW_CLOSING));
-                PasswordDialog.this.dispose();
-            }
+        btnOk.addActionListener(e -> {
+            ok = true;
+            PasswordDialog.this.dispatchEvent(new WindowEvent(PasswordDialog.this, WindowEvent.WINDOW_CLOSING));
+            PasswordDialog.this.dispose();
         });
         contentPane.add(btnOk);
         JButton btnCancel = new JButton("Cancel");

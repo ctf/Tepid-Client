@@ -92,12 +92,26 @@ task copyBuilder(type: Copy) {
 }
 
 task copyLibs(type: Copy) {
+    into "$buildDir/libs"
+    from configurations.runtime
+}
+
+task copyLibsLibs(type: Copy) {
     into "$buildDir/libs/libs"
     from configurations.runtime
 }
 
+task commandLinux(type: Exec) {
+    workingDir "$buildDir/libs"
+    commandLine "java", "-classpath", "./*", "ca.mcgill.science.tepid.client.Main"
+}
+
 jar.baseName = 'tepid'
 
-task buildTepid(type: GradleBuild) {
-    tasks = ['copyBuilder', 'copyLibs', 'jar']
+task tepidWindows(type: GradleBuild) {
+    tasks = ['copyBuilder', 'copyLibsLibs', 'jar']
+}
+
+task tepidLinux(type: GradleBuild) {
+    tasks = ['copyLibs', 'jar']
 }

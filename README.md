@@ -4,10 +4,28 @@ Client program to bind printers and send jobs to TEPID-server
 
 ### Build
 
-The client is bundled with a jar file, and can be built with a single `buildTepid` command.
-All output will be located under `$buildDir/libs`.
+You may look at the gradle panel for a list of valid commands.
 
-Note that if you wish to perform a clean build, you will need `clean build buildTepid`
+All output will be located under `[out] = $buildDir/libs`.
+
+You are free to mix and match commands.
+
+Notable commands:
+
+| Command | Description |
+| --- | --- |
+| `clean` | Delete `[out]` |
+| `jar` | Build jar file in `[out]` |
+| `tepidWindows` | Build jar and copy all files (including exe and ini) to $buildDir/libs` |
+| `tepidLinux` | Build jar and copy all libs to `[out]` |
+| `commandLinux` | Launch Tepid (assuming files are already built) |
+
+### Run
+
+Windows: `cd [out]; tepid.exe`
+
+Linux: `java -classpath [out]/* ca.mcgill.science.tepid.client.Main`
+<br/>(This is the same as `commandLinux`)
 
 ### Update
 

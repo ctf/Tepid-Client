@@ -33,7 +33,8 @@ public class Notification extends JWindow {
     public Notification() {
         final int w = 360, h = 90, p = 10;
         y = h;
-        this.setBounds(1920 - w - p, 1080 - h - p - 40, w, h);
+        Rectangle screenBounds = this.getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
+        this.setBounds(screenBounds.width - w - p, screenBounds.height - h - p - 40, w, h);
         this.setBackground(Color.WHITE);
         this.setAlwaysOnTop(true);
         final JPanel content = new JPanel() {
@@ -258,8 +259,10 @@ public class Notification extends JWindow {
     }
 
     private static void repositionActive() {
+    	if (active.isEmpty()) return;
+        Rectangle screenBounds = active.getFirst().getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
         final int p = 20;
-        int nY = 1040;
+        int nY = screenBounds.height - 40 - p;
         for (Notification n : active) {
             Rectangle b = n.getBounds();
             nY -= b.height + p;

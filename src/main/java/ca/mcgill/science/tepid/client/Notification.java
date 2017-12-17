@@ -28,6 +28,7 @@ public class Notification extends JWindow {
     private BufferedImage icon, oldIcon;
     private Color color = Color.BLACK, oldColor = null;
     private String title = "", body = "";
+	private Thread animationThread;
 
     public Notification() {
         final int w = 360, h = 90, p = 10;
@@ -179,7 +180,8 @@ public class Notification extends JWindow {
 
     private void trans(final int from, final int to) {
         final int height = getHeight(), fps = 60, frameMs = 1000 / fps;
-        new Thread("Animation") {
+        if (animationThread != null) animationThread.interrupt();
+        animationThread = new Thread("Animation") {
             @Override
             public void run() {
                 try {
@@ -201,10 +203,10 @@ public class Notification extends JWindow {
                     }
                     repaint();
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
                 }
             }
-        }.start();
+        };
+        animationThread.start();
     }
 
     public BufferedImage getIcon() {

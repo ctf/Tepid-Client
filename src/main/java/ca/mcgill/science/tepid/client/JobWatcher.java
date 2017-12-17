@@ -1,5 +1,6 @@
 package ca.mcgill.science.tepid.client;
 
+import ca.mcgill.science.tepid.client.notifications.Notification;
 import ca.mcgill.science.tepid.common.Destination;
 import ca.mcgill.science.tepid.common.PrintJob;
 import com.fasterxml.jackson.databind.JsonNode;

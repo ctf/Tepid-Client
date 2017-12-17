@@ -1,11 +1,13 @@
-package ca.mcgill.science.tepid.client;
+package ca.mcgill.science.tepid.client.notifications;
 
-import ca.mcgill.science.tepid.common.Utils;
-import com.io.jimm.StringUtils;
-
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -15,7 +17,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import javax.imageio.ImageIO;
+import javax.swing.JPanel;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+
+import com.io.jimm.StringUtils;
+
+import ca.mcgill.science.tepid.client.CubicBezier;
+import ca.mcgill.science.tepid.common.Utils;
 
 public class Notification extends JWindow {
     private static final long serialVersionUID = -1841885707134092550L;
@@ -29,6 +43,7 @@ public class Notification extends JWindow {
     private Color color = Color.BLACK, oldColor = null;
     private String title = "", body = "";
 	private Thread animationThread;
+	private final BlockingQueue<NotificationEntry> entries = new LinkedBlockingQueue<>();
 
     public Notification() {
         final int w = 360, h = 90, p = 10;
@@ -109,16 +124,18 @@ public class Notification extends JWindow {
                     g.fill(s);
                     g.setTransform(transform);
                 } else if (icon != null) {
-                    BufferedImage prev = oldIcon == null ? icon : oldIcon;
-                    AffineTransform transform = g.getTransform();
-                    Rectangle bounds = new Rectangle(0, 0, prev.getWidth(), prev.getHeight());
-                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -highY + (getHeight() - bounds.height) / 2 - bounds.y);
-                    g.drawImage(prev, 0, 0, null);
-                    g.setTransform(transform);
-                    bounds = new Rectangle(0, 0, icon.getWidth(), icon.getHeight());
-                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -lowY + (getHeight() - bounds.height) / 2 - bounds.y);
-                    g.drawImage(icon, 0, 0, null);
-                    g.setTransform(transform);
+                	synchronized(icon) {
+	                    BufferedImage prev = oldIcon == null ? icon : oldIcon;
+	                    AffineTransform transform = g.getTransform();
+	                    Rectangle bounds = new Rectangle(0, 0, prev.getWidth(), prev.getHeight());
+	                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -highY + (getHeight() - bounds.height) / 2 - bounds.y);
+	                    g.drawImage(prev, 0, 0, null);
+	                    g.setTransform(transform);
+	                    bounds = new Rectangle(0, 0, icon.getWidth(), icon.getHeight());
+	                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -lowY + (getHeight() - bounds.height) / 2 - bounds.y);
+	                    g.drawImage(icon, 0, 0, null);
+	                    g.setTransform(transform);
+                	}
                 }
                 g.drawImage(closeButtonHover ? xButtonHover : xButton, w - xButton.getWidth() - p, p, null);
             }
@@ -129,12 +146,12 @@ public class Notification extends JWindow {
                 if (e.getX() > content.getWidth() - 24 && e.getY() < 24) {
                     if (!closeButtonHover) {
                         closeButtonHover = true;
-                        repaint();
+                        safeRepaint();
                     }
                 } else {
                     if (closeButtonHover) {
                         closeButtonHover = false;
-                        repaint();
+                        safeRepaint();
                     }
                 }
             }
@@ -144,7 +161,7 @@ public class Notification extends JWindow {
             public void mouseExited(MouseEvent e) {
                 if (closeButtonHover) {
                     closeButtonHover = false;
-                    repaint();
+                    safeRepaint();
                 }
             }
 
@@ -167,6 +184,7 @@ public class Notification extends JWindow {
             removeActive(this);
         }
         super.setVisible(b);
+        if (b) this.startAnimationThread();
     }
 
     public void close() {
@@ -179,30 +197,51 @@ public class Notification extends JWindow {
         return closed;
     }
 
-    private void trans(final int from, final int to) {
+    private void startAnimationThread() {
         final int height = getHeight(), fps = 60, frameMs = 1000 / fps;
-        if (animationThread != null) animationThread.interrupt();
+        if (animationThread != null && animationThread.isAlive()) return;
         animationThread = new Thread("Animation") {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(200);
-                    double fromY = from * height, toY = to * height, distY = Math.abs(toY - fromY);
-                    long start = System.currentTimeMillis();
-                    for (double t = 0; t <= 1; ) {
-                        long frameStart = System.currentTimeMillis();
-                        t = (double) (frameStart - start) / (double) ms;
-                        double pos = easeInOut.calc(t);
-                        if (toY > fromY) {
-                            y = pos * distY + fromY;
-                        } else {
-                            y = distY - (pos * distY) + toY;
-                        }
-                        repaint();
-                        long sleepTime = frameMs - (System.currentTimeMillis() - frameStart);
-                        if (sleepTime > 0) Thread.sleep(sleepTime);
-                    }
-                    repaint();
+                	while (!Thread.interrupted()) {
+                		NotificationEntry e = entries.take();
+            	        Notification.this.title = e.title;
+            	        Notification.this.body = e.body;
+                		if (e.quota) {
+                			quotaMode = true;
+                			oldIcon = null;
+                			icon = null;
+                		} else {
+                	        quotaMode = false;
+                	        oldColor = oldColor == null ? new Color(e.color) : Notification.this.color;
+                	        Notification.this.color = new Color(e.color);
+                	        oldIcon = icon;
+                	        setIcon(e.icon);
+                	        if (oldIcon == null) {
+                	            safeRepaint();
+                	            continue;
+                	        }
+                		}
+	                    double fromY = e.from * height, toY = e.to * height, distY = Math.abs(toY - fromY);
+	                    long start = System.currentTimeMillis();
+	                    for (double t = 0; t <= 1; ) {
+	                        long frameStart = System.currentTimeMillis();
+	                        t = (double) (frameStart - start) / (double) ms;
+	                        double pos = easeInOut.calc(t);
+	                        if (toY > fromY) {
+	                            y = pos * distY + fromY;
+	                        } else {
+	                            y = distY - (pos * distY) + toY;
+	                        }
+	                        safeRepaint();
+	                        long sleepTime = frameMs - (System.currentTimeMillis() - frameStart);
+	                        if (sleepTime > 0) Thread.sleep(sleepTime);
+	                    }
+	                    oldIcon = icon;
+	                    safeRepaint();
+	                    Thread.sleep(frameMs * 2);
+                	}
                 } catch (InterruptedException e) {
                 }
             }
@@ -219,25 +258,11 @@ public class Notification extends JWindow {
     }
 
     public void setStatus(int color, String icon, String title, String body) {
-        this.quotaMode = false;
-        this.oldColor = this.oldColor == null ? new Color(color) : this.color;
-        this.color = new Color(color);
-        this.oldIcon = this.icon;
-        this.setIcon(icon);
-        this.title = title;
-        this.body = body;
-        if (this.oldIcon == null) {
-            repaint();
-        } else {
-            trans(0, 1);
-        }
+    	this.entries.add(new NotificationEntry(color, icon, title, body));
     }
 
     public void setQuota(int from, int to, String title, String body) {
-        this.quotaMode = true;
-        this.title = title;
-        this.body = body;
-        trans(from, to);
+    	this.entries.add(new NotificationEntry(from, to, title, body));
     }
 
     public static BufferedImage loadImage(InputStream input) {
@@ -269,5 +294,18 @@ public class Notification extends JWindow {
             n.setBounds(b.x, nY, b.width, b.height);
         }
     }
+    
+	private void safeRepaint() {
+		if (SwingUtilities.isEventDispatchThread()) {
+			this.repaint();
+		} else {
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					Notification.this.repaint();
+				}
+			});
+		}
+	}
 
 }

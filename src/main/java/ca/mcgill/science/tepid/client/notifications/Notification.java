@@ -40,7 +40,7 @@ public class Notification extends JWindow {
     private boolean closeButtonHover, quotaMode, closed;
     private BufferedImage icon, oldIcon;
     private Color color = Color.BLACK, oldColor = null;
-    private String title = "", body = "", oldTo, newFrom;
+    private String title, body, oldTo, newFrom;
 	private Thread animationThread;
 	private final BlockingQueue<NotificationEntry> entries = new LinkedBlockingQueue<>();
 
@@ -73,11 +73,11 @@ public class Notification extends JWindow {
                     if (y >= getHeight()) g.setColor(color);
                     else g.setColor(new Color(combineColors(((int) ((1 - (float) y / getHeight()) * 0xff) << 24) | (oldColor.getRGB() & 0xffffff), color.getRGB()), true));
                 }
-                g.drawString(Notification.this.title, titleX, 24);
+                g.drawString(title == null ? "" : title, titleX, 24);
                 g.fillRect(0, 0, getHeight(), getHeight());
                 g.setFont(fBody);
                 g.setColor(Color.BLACK);
-                List<String> bodyLines = StringUtils.wrap(Notification.this.body, g.getFontMetrics(), getWidth() - getHeight() - p * 2);
+                List<String> bodyLines = StringUtils.wrap(body == null ? "" : body, g.getFontMetrics(), getWidth() - getHeight() - p * 2);
                 int bodyY = 45, lineHeight = g.getFontMetrics().getHeight();
                 for (String s : bodyLines) {
                     g.drawString(s, titleX, bodyY);
@@ -212,8 +212,8 @@ public class Notification extends JWindow {
                 				e = new NotificationEntry(getQuotaColor(e.from), null, e.title, e.body);
                 			}
                 		}
-            	        Notification.this.title = e.title;
-            	        Notification.this.body = e.body;
+            	        if (title == null) title = e.title;
+            	        if (body == null) body = e.body;
                 		if (e.quota) {
                 			quotaMode = true;
                 			oldIcon = null;
@@ -239,6 +239,8 @@ public class Notification extends JWindow {
 	                        long frameStart = System.currentTimeMillis();
 	                        t = (double) (frameStart - start) / (double) ms;
 	                        double pos = easeInOut.calc(t);
+	                        if (pos >= 0.5 && !title.equals(e.title)) title = e.title;
+	                        if (pos >= 0.5 && !body.equals(e.body)) body = e.body;
 	                        if (toY > fromY) {
 	                            y = pos * distY + fromY;
 	                        } else {

@@ -21,6 +21,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.WriterInterceptor;
 import java.awt.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -45,7 +46,7 @@ public class Main {
                 ctx.setOutputStream(new XZOutputStream(outputStream, new LZMA2Options()));
                 ctx.proceed();
             }).build().target(serverUrl);
-    static String token = "", tokenUser = "";
+    public static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
     static {SystemTray.FORCE_GTK2 = true;}
@@ -83,15 +84,13 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
-        String defaultQueue = null;
-        for (PrintQueue q : queues) {
-            queueIds.put(Utils.newId(), q.name);
-            if (q.defaultOn != null && Utils.wildcardMatch(q.defaultOn, Utils.getHostname())) {
-                defaultQueue = q.name;
-            }
+        //load persist from file
+        try {
+            File data = new File(manager.tepidDataPath());
+            if (data.exists()) persist.load(new FileInputStream(data));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        manager.bind(queueIds, defaultQueue, persist);
         if (persist.getProperty("token") != null) {
             String[] parts = persist.getProperty("token").split(":");
             if (parts.length > 1) {
@@ -99,10 +98,11 @@ public class Main {
                 if (validateToken(un, sessionId)) {
                     token = un + ":" + sessionId;
                     tokenUser = un;
+                } else {
+                	System.err.println("Saved session token could not be validated");
                 }
             }
         }
-
         Integer quota = null;
         try {
             if (!token.isEmpty()) {
@@ -112,8 +112,17 @@ public class Main {
             }
         } catch (Exception ignored) {
         }
-        if (quota != null) setTrayQuota(quota);
-        else systemTray.setStatus("Welcome to CTF");
+        
+        PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
+        String defaultQueue = null;
+        for (PrintQueue q : queues) {
+            queueIds.put(Utils.newId(), q.name);
+            if (q.defaultOn != null && Utils.wildcardMatch(q.defaultOn, Utils.getHostname())) {
+                defaultQueue = q.name;
+            }
+        }
+        manager.bind(queueIds, defaultQueue);
+        
         systemTray.removeMenuEntry("Quit");
         try {
             File icon = File.createTempFile("tepid", ".png");
@@ -129,6 +138,8 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if (quota != null) setTrayQuota(quota);
+        else systemTray.setStatus("Welcome to CTF");
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {

@@ -1,10 +1,7 @@
 package ca.mcgill.science.tepid.client;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Properties;
 
 /**
  * Logic for managing printers for various systems
@@ -49,7 +46,7 @@ public interface PrinterMgmt {
      * @param queueIds     map of ids
      * @param defaultQueue default queue id
      */
-    default void bind(Map<String, String> queueIds, String defaultQueue, Properties properties) {
+    default void bind(Map<String, String> queueIds, String defaultQueue) {
         if (!preBind()) {
             System.err.println("Failed to preBind printer management");
             return;
@@ -63,14 +60,6 @@ public interface PrinterMgmt {
                 queueIds.forEach((port, queue) -> deletePrinter(queue, port));
             }
         });
-        // load properties
-        try {
-            File data = new File(tepidDataPath());
-            if (data.exists())
-                properties.load(new FileInputStream(data));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     /**

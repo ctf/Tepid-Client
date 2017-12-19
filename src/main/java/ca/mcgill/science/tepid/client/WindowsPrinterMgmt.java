@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class WindowsPrinterMgmt implements PrinterMgmt {
 
-    private String user = System.getProperty("user.name");
+    private String user = null;
 
     static {
         System.out.println("Getting ActiveXComponent");
@@ -40,6 +40,7 @@ public class WindowsPrinterMgmt implements PrinterMgmt {
     }
 
     public void addPrinterImpl(String queue, String id, boolean isDefault) throws IOException, InterruptedException {
+    	if (user == null) user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
         queue = queue + "-" + user;
         wmi.getPropertyAsComponent("Security_").getPropertyAsComponent("Privileges").invoke("AddAsString", new Variant("SeLoadDriverPrivilege"), new Variant(true));
         Dispatch win32TcpIpPrinterPort = wmi.invoke("Get", "Win32_TCPIPPrinterPort").toDispatch();

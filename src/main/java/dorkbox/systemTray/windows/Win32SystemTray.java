@@ -50,8 +50,19 @@ public class Win32SystemTray extends SystemTray {
     @Override
     protected void setIcon_(final String iconPath) {
     	this.iconPath = iconPath;
-    	this.setVisible(false);
-    	this.setVisible(true);
+    	if (visible) {
+    		File icon;
+    		try {
+    			icon = writeToTmp(Win32Icon.imageToIco(ImageIO.read(new File(iconPath)), 32, 16), "tray", ".ico");
+    		} catch (IOException e) {
+    			throw new RuntimeException(e);
+    		}
+    		notifyIconData.hIcon = LoadImage(null, new WString(icon.getAbsolutePath()), IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
+    		Shell_NotifyIcon(NIM_MODIFY, notifyIconData);
+//    		Shell_NotifyIcon(NIM_SETFOCUS, notifyIconData);
+    	} else {
+    		this.setVisible(true);
+    	}
     }
 
     @Override
@@ -90,33 +101,24 @@ public class Win32SystemTray extends SystemTray {
 	            public void run() {
 	                final POINT mousePosition = new POINT();
 	                StdCallCallback wndProc;
-	                HWND hwnd = CreateWindowEx(0, new WString("STATIC"), new WString("ca.mcgill.sus.tepid.client"), 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	                HWND hwnd = CreateWindowEx(0, new WString("STATIC"), new WString(Win32SystemTray.class.getCanonicalName()), 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	                if (hwnd == null) {
 	                    System.err.println("Unable to create tray window.");
 	                    System.exit(0);
 	                }
 	                final int wmTaskbarCreated = RegisterWindowMessage(new WString("TaskbarCreated"));
 	                final int wmTrayIcon = WM_USER + 1;
-	                byte[] ico;
 	                File icon;
-	                try {
-	                    ico = Win32Icon.imageToIco(ImageIO.read(new File(iconPath)), 32, 16);
-	                    icon = File.createTempFile("tray", ".ico");
-	                    FileOutputStream fos = new FileOutputStream(icon);
-	                    fos.write(ico, 0, ico.length);
-	                    fos.close();
-	                } catch (IOException e) {
-	                    throw new RuntimeException(e);
-	                }
-	//				Memory icon = new Memory(ico.length + 8);
-	//				icon.write(0, ico, 0, ico.length);
-	//				icon.write(ico.length, new byte[] {0,0,0,0,0,0,0,0}, 0, 8);
+					try {
+						icon = writeToTmp(Win32Icon.imageToIco(ImageIO.read(new File(iconPath)), 32, 16), "tray", ".ico");
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
 	                notifyIconData.hWnd = hwnd;
 	                notifyIconData.uID = 1000;
 	                notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE;
 	                notifyIconData.uCallbackMessage = wmTrayIcon;
 	                notifyIconData.hIcon = LoadImage(null, new WString(icon.getAbsolutePath()), IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
-	//				notifyIconData.hIcon = LoadImage(icon.getPointer(0), null, IMAGE_ICON, 0, 0, 0);
 	                notifyIconData.setTooltip("TEPID by CTF");
 	                Shell_NotifyIcon(NIM_ADD, notifyIconData);
 	                icon.delete();
@@ -188,6 +190,18 @@ public class Win32SystemTray extends SystemTray {
 	        } catch (Exception ignored) {
 	        }
     	}
+    }
+    
+    public static File writeToTmp(byte[] bytes, String prefix, String ext) {
+    	try {
+	        File tmp = File.createTempFile(prefix, ext);
+	        FileOutputStream fos = new FileOutputStream(tmp);
+	        fos.write(bytes, 0, bytes.length);
+	        fos.close();
+	        return tmp;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

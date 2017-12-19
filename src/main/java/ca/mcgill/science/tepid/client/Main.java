@@ -51,6 +51,7 @@ public class Main {
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
     static {SystemTray.FORCE_GTK2 = true;}
 	private static SystemTray systemTray = SystemTray.getSystemTray();
+	private static File trayIcon, trayIconPrinting;
 
     public static void main(String[] args) {
         System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");        
@@ -125,16 +126,20 @@ public class Main {
         
         systemTray.removeMenuEntry("Quit");
         try {
-            File icon = File.createTempFile("tepid", ".png");
-            icon.delete();
+            trayIcon = File.createTempFile("tepid", ".png");
+            trayIconPrinting = File.createTempFile("tepid", ".png");
+            trayIcon.delete();
+            trayIconPrinting.delete();
             if (System.getProperty("os.name").startsWith("Windows")) {
-                Files.copy(Utils.getResourceAsStream("trayicon/16.png"), icon.toPath());
+                Files.copy(Utils.getResourceAsStream("trayicon/16.png"), trayIcon.toPath());
+                Files.copy(Utils.getResourceAsStream("trayicon/16_printing.png"), trayIconPrinting.toPath());
 //				Files.copy(Utils.getResourceAsStream("trayicon/32.png"), icon.toPath());
             } else {
-                Files.copy(Utils.getResourceAsStream("trayicon/32.png"), icon.toPath());
+                Files.copy(Utils.getResourceAsStream("trayicon/32.png"), trayIcon.toPath());
+                Files.copy(Utils.getResourceAsStream("trayicon/32_printing.png"), trayIconPrinting.toPath());
             }
-            icon.deleteOnExit();
-            systemTray.setIcon(icon.getAbsolutePath());
+            trayIcon.deleteOnExit();
+            systemTray.setIcon(trayIcon.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -235,6 +240,16 @@ public class Main {
     
     public static void setTrayQuota(int quota) {
     	systemTray.setStatus(quota + " Pages Left");
+    }
+    
+    private static int trayPrinting;
+    public static void setTrayPrinting(boolean printing) {
+    	trayPrinting += printing ? 1 : -1;
+    	if (trayPrinting > 0) {
+    		systemTray.setIcon(trayIconPrinting.getAbsolutePath());
+    	} else {
+    		systemTray.setIcon(trayIcon.getAbsolutePath());
+    	}
     }
 
 }

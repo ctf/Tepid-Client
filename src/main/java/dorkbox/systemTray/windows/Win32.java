@@ -243,7 +243,9 @@ public class Win32 {
         }
 
         static public final int NIM_ADD = 0;
+        static public final int NIM_MODIFY = 1;
         static public final int NIM_DELETE = 2;
+        static public final int NIM_SETFOCUS = 3;
 
         //
 

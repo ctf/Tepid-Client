@@ -33,6 +33,7 @@ public class JobWatcher extends Thread {
         PrintJob j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
         Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {});
         Notification n = new Notification();
+        Main.setTrayPrinting(true);
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + j.truncateName(28) + "\" is currently being received from the application. ");
         n.setVisible(true);
         while (!Thread.currentThread().isInterrupted()) {
@@ -42,6 +43,7 @@ public class JobWatcher extends Thread {
             if (change.get("results").has(0)) {
                 j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
                 if (j.getFailed() != null) {
+                	Main.setTrayPrinting(false);
                     if (j.getError().equalsIgnoreCase("insufficient quota")) {
                         this.status = Status.NO_QUOTA;
                         int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
@@ -85,6 +87,7 @@ public class JobWatcher extends Thread {
                 }
                 if (status == Status.SENDING) {
                     if (j.getPrinted() != null) {
+                    	Main.setTrayPrinting(false);
                         this.status = Status.PRINTED;
                         //Note that the 2 here is correct as each colour page has already been counted once in j.getPages()
                         int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class),

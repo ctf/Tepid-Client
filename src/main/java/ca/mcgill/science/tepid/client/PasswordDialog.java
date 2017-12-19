@@ -61,7 +61,8 @@ public class PasswordDialog extends JFrame {
         this.deferredResult = q;
         this.domain = domain;
         setTitle("First Time Printing");
-        setBounds(1920 / 2 - 434 / 2, 1080 / 2 - 262 / 2, 434, 262);
+        Rectangle screenBounds = this.getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
+        setBounds(screenBounds.width / 2 - 434 / 2, screenBounds.height / 2 - 262 / 2, 434, 262);
         setResizable(false);
         setIconImages(Arrays.asList(icon));
         CurrentUser cu = CurrentUser.getCurrentUser();

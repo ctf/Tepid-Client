@@ -1,9 +1,9 @@
 package dorkbox.systemTray.windows;
 
-import java.awt.*;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -11,7 +11,7 @@ public class Win32Icon {
 
     public static final int BI_RGB = 0, BI_RLE8 = 1, BI_RLE4 = 2, BI_BITFIELDS = 3, BI_JPEG = 4, BI_PNG = 5;
     
-    public static byte[] imageToIco(BufferedImage img, int... sizes) throws IOException {
+    public static byte[] imageToIco(BufferedImage img, int... sizes) {
     	BufferedImage[] resized = new BufferedImage[sizes.length];
     	for (int i = 0; i < sizes.length; i++) {
 			resized[i] = scale(img, sizes[i]);
@@ -19,7 +19,7 @@ public class Win32Icon {
     	return imageToIco(resized);
     }
 
-    public static byte[] imageToIco(BufferedImage... sizes) throws IOException {
+    public static byte[] imageToIco(BufferedImage... sizes) {
         int size = 0;
         for (BufferedImage s : sizes) {
             size += bmpSize(s.getWidth(), s.getHeight());

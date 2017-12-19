@@ -23,7 +23,8 @@ public class PasswordDialog extends JFrame {
     private JPasswordField txtPassword;
     private Q<Result> deferredResult;
     private JTextField txtUpn;
-    private String user, domain;
+    private final String user, domain;
+	private final boolean inDomain;
     private static final BufferedImage[] icon = new BufferedImage[9];
 
     static {
@@ -32,14 +33,14 @@ public class PasswordDialog extends JFrame {
         }
     }
 
-    public static Promise<Result> prompt() {
+    public static Promise<Result> prompt(final String domain) {
         final Q<Result> q = Q.defer();
         new Thread("AsyncInvoke") {
             @Override
             public void run() {
                 EventQueue.invokeLater(() -> {
                     try {
-                        final PasswordDialog frame = new PasswordDialog(q);
+                        final PasswordDialog frame = new PasswordDialog(q, domain);
                         frame.setVisible(true);
                         frame.toFront();
                         frame.requestFocus();
@@ -56,15 +57,16 @@ public class PasswordDialog extends JFrame {
     /**
      * Create the frame.
      */
-    private PasswordDialog(Q<Result> q) {
+    private PasswordDialog(Q<Result> q, String domain) {
         this.deferredResult = q;
+        this.domain = domain;
         setTitle("First Time Printing");
         setBounds(1920 / 2 - 434 / 2, 1080 / 2 - 262 / 2, 434, 262);
         setResizable(false);
         setIconImages(Arrays.asList(icon));
         CurrentUser cu = CurrentUser.getCurrentUser();
-        this.user = cu.user;
-        this.domain = cu.domain;
+        this.inDomain = cu.domain.equals(domain);
+        this.user = inDomain ? cu.user : "";
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -79,7 +81,7 @@ public class PasswordDialog extends JFrame {
 
             @Override
             public void windowActivated(WindowEvent e) {
-                txtPassword.requestFocusInWindow();
+                (inDomain ? txtPassword : txtUpn).requestFocusInWindow();
             }
         });
         contentPane = new JPanel() {
@@ -133,7 +135,7 @@ public class PasswordDialog extends JFrame {
             }
         });
         contentPane.add(btnCancel);
-        txtUpn = new JTextField(this.user + "@" + this.domain) {
+        txtUpn = new JTextField(this.user + (inDomain ? ("@" + this.domain) : "")) {
             private static final long serialVersionUID = -8637246599077545633L;
             TextFieldThemer themer = new TextFieldThemer(this, "User name");
 

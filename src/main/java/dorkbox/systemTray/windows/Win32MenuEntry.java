@@ -1,21 +1,21 @@
 package dorkbox.systemTray.windows;
 
-import dorkbox.systemTray.MenuEntry;
-import dorkbox.systemTray.SystemTrayMenuAction;
-
 import java.io.InputStream;
 import java.net.URL;
+
+import dorkbox.systemTray.MenuEntry;
+import dorkbox.systemTray.SystemTrayMenuAction;
 
 public class Win32MenuEntry implements MenuEntry {
 
     private SystemTrayMenuAction callback;
     private String text;
-    private Win32SystemTray systemTray;
+//    private Win32SystemTray systemTray;
 
     Win32MenuEntry(final String label, final String imagePath, final SystemTrayMenuAction callback, final Win32SystemTray systemTray) {
         this.text = label;
         this.callback = callback;
-        this.systemTray = systemTray;
+//        this.systemTray = systemTray;
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Win32MenuEntry implements MenuEntry {
 
     @Override
     public void remove() {
-        systemTray.removeMenuEntry(this);
+        //remove hook
     }
 
 }

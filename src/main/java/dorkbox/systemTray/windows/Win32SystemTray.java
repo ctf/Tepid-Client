@@ -23,12 +23,18 @@ import static dorkbox.systemTray.windows.Win32.User32_64.SetWindowLongPtr;
 
 public class Win32SystemTray extends SystemTray {
 
-    private volatile String statusText;
+    private volatile String statusText, iconPath;
+    private boolean visible;
+	private final NOTIFYICONDATA notifyIconData;
+	private Thread trayThread;
+    
+    public Win32SystemTray() {
+    	notifyIconData = new NOTIFYICONDATA();
+	}
 
     @Override
     public void shutdown() {
-        // TODO Auto-generated method stub
-
+        setVisible(false);
     }
 
     @Override
@@ -43,116 +49,9 @@ public class Win32SystemTray extends SystemTray {
 
     @Override
     protected void setIcon_(final String iconPath) {
-        final CyclicBarrier barrier = new CyclicBarrier(2);
-        final SystemTray tray = this;
-        new Thread("Tray") {
-            public void run() {
-
-                final NOTIFYICONDATA notifyIconData = new NOTIFYICONDATA();
-                final POINT mousePosition = new POINT();
-                StdCallCallback wndProc;
-
-                HWND hwnd = CreateWindowEx(0, new WString("STATIC"), new WString("ca.mcgill.sus.tepid.client"), 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                if (hwnd == null) {
-                    System.err.println("Unable to create tray window.");
-                    System.exit(0);
-                }
-
-                final int wmTaskbarCreated = RegisterWindowMessage(new WString("TaskbarCreated"));
-                final int wmTrayIcon = WM_USER + 1;
-
-                byte[] ico;
-                File icon;
-                try {
-                    ico = Win32Icon.imageToIco(ImageIO.read(new File(iconPath)), 32, 16);
-                    icon = File.createTempFile("tray", ".ico");
-                    FileOutputStream fos = new FileOutputStream(icon);
-                    fos.write(ico, 0, ico.length);
-                    fos.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-//				Memory icon = new Memory(ico.length + 8);
-//				icon.write(0, ico, 0, ico.length);
-//				icon.write(ico.length, new byte[] {0,0,0,0,0,0,0,0}, 0, 8);
-                notifyIconData.hWnd = hwnd;
-                notifyIconData.uID = 1000;
-                notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE;
-                notifyIconData.uCallbackMessage = wmTrayIcon;
-                notifyIconData.hIcon = LoadImage(null, new WString(icon.getAbsolutePath()), IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
-//				notifyIconData.hIcon = LoadImage(icon.getPointer(0), null, IMAGE_ICON, 0, 0, 0);
-                notifyIconData.setTooltip("TEPID by CTF");
-                Shell_NotifyIcon(NIM_ADD, notifyIconData);
-                icon.delete();
-                Runtime.getRuntime().addShutdownHook(new Thread() {
-                    public void run() {
-                        Shell_NotifyIcon(NIM_DELETE, notifyIconData);
-                    }
-                });
-
-                wndProc = new StdCallCallback() {
-                    @SuppressWarnings("unused")
-                    public int callback(HWND hWnd, int message, Parameter wParameter, Parameter lParameter) {
-                        if (message == wmTrayIcon) {
-                            int lParam = lParameter.intValue();
-                            switch (lParam) {
-                                case WM_LBUTTONDOWN:
-                                case WM_LBUTTONUP:
-                                case WM_RBUTTONDOWN:
-                                    break;
-                                case WM_RBUTTONUP:
-                                    if (GetCursorPos(mousePosition)) {
-                                        HMENU menu = CreatePopupMenu();
-                                        if (statusText != null && !statusText.isEmpty()) {
-                                            AppendMenu(menu, MF_STRING | MF_GRAYED, 0, statusText);
-                                            AppendMenu(menu, MF_SEPARATOR, 0, null);
-                                        }
-                                        int i = 1;
-                                        for (MenuEntry entry : menuEntries) {
-                                            final int IDR_ENTRY = (i++);
-                                            AppendMenu(menu, MF_STRING, IDR_ENTRY, entry.getText());
-                                        }
-                                        SetForegroundWindow(hWnd);
-                                        int choice = TrackPopupMenuEx(menu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD, mousePosition.x, mousePosition.y, hWnd, null);
-                                        if (choice > 0) {
-                                            Win32MenuEntry chosenEntry = (Win32MenuEntry) menuEntries.get(choice - 1);
-                                            if (chosenEntry != null) {
-                                                chosenEntry.getCallback().onClick(tray, chosenEntry);
-                                            }
-                                        }
-                                    }
-                                    break;
-                            }
-                        } else if (message == wmTaskbarCreated) {
-                            // Add icon again if explorer crashed.
-                            Shell_NotifyIcon(NIM_ADD, notifyIconData);
-                        }
-                        return DefWindowProc(hWnd, message, wParameter, lParameter);
-                    }
-                };
-                if (Win32.is64Bit)
-                    SetWindowLongPtr(hwnd, GWL_WNDPROC, wndProc);
-                else
-                    SetWindowLong(hwnd, GWL_WNDPROC, wndProc);
-
-                try {
-                    barrier.await();
-                } catch (Exception ignored) {
-                }
-
-                MSG msg = new MSG();
-                while (GetMessage(msg, null, 0, 0)) {
-                    TranslateMessage(msg);
-                    DispatchMessage(msg);
-                }
-            }
-        }.start();
-
-        try {
-            barrier.await();
-        } catch (Exception ignored) {
-        }
-
+    	this.iconPath = iconPath;
+    	this.setVisible(false);
+    	this.setVisible(true);
     }
 
     @Override
@@ -167,8 +66,7 @@ public class Win32SystemTray extends SystemTray {
     }
 
     @Override
-    public void addMenuEntry(String menuText, String cacheName, InputStream imageStream,
-                             SystemTrayMenuAction callback) {
+    public void addMenuEntry(String menuText, String cacheName, InputStream imageStream, SystemTrayMenuAction callback) {
         this.menuEntries.add(new Win32MenuEntry(menuText, null, callback, this));
 
     }
@@ -177,6 +75,119 @@ public class Win32SystemTray extends SystemTray {
     public void addMenuEntry(String menuText, InputStream imageStream, SystemTrayMenuAction callback) {
         this.menuEntries.add(new Win32MenuEntry(menuText, null, callback, this));
 
+    }
+    
+    private void setVisible(boolean visible) {
+    	if (this.visible == visible) return;
+    	this.visible = visible;
+    	if (!visible) {
+    		Shell_NotifyIcon(NIM_DELETE, notifyIconData);
+    		if (trayThread != null) trayThread.interrupt();
+    	} else {
+	        final CyclicBarrier barrier = new CyclicBarrier(2);
+	        final SystemTray tray = this;
+	        trayThread = new Thread("Tray") {
+	            public void run() {
+	                final POINT mousePosition = new POINT();
+	                StdCallCallback wndProc;
+	                HWND hwnd = CreateWindowEx(0, new WString("STATIC"), new WString("ca.mcgill.sus.tepid.client"), 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	                if (hwnd == null) {
+	                    System.err.println("Unable to create tray window.");
+	                    System.exit(0);
+	                }
+	                final int wmTaskbarCreated = RegisterWindowMessage(new WString("TaskbarCreated"));
+	                final int wmTrayIcon = WM_USER + 1;
+	                byte[] ico;
+	                File icon;
+	                try {
+	                    ico = Win32Icon.imageToIco(ImageIO.read(new File(iconPath)), 32, 16);
+	                    icon = File.createTempFile("tray", ".ico");
+	                    FileOutputStream fos = new FileOutputStream(icon);
+	                    fos.write(ico, 0, ico.length);
+	                    fos.close();
+	                } catch (IOException e) {
+	                    throw new RuntimeException(e);
+	                }
+	//				Memory icon = new Memory(ico.length + 8);
+	//				icon.write(0, ico, 0, ico.length);
+	//				icon.write(ico.length, new byte[] {0,0,0,0,0,0,0,0}, 0, 8);
+	                notifyIconData.hWnd = hwnd;
+	                notifyIconData.uID = 1000;
+	                notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE;
+	                notifyIconData.uCallbackMessage = wmTrayIcon;
+	                notifyIconData.hIcon = LoadImage(null, new WString(icon.getAbsolutePath()), IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
+	//				notifyIconData.hIcon = LoadImage(icon.getPointer(0), null, IMAGE_ICON, 0, 0, 0);
+	                notifyIconData.setTooltip("TEPID by CTF");
+	                Shell_NotifyIcon(NIM_ADD, notifyIconData);
+	                icon.delete();
+	                Runtime.getRuntime().addShutdownHook(new Thread() {
+	                    public void run() {
+	                        setVisible(false);
+	                    }
+	                });
+	                wndProc = new StdCallCallback() {
+	                    @SuppressWarnings("unused")
+	                    public int callback(HWND hWnd, int message, Parameter wParameter, Parameter lParameter) {
+	                        if (message == wmTrayIcon) {
+	                            int lParam = lParameter.intValue();
+	                            switch (lParam) {
+	                                case WM_LBUTTONDOWN:
+	                                case WM_LBUTTONUP:
+	                                case WM_RBUTTONDOWN:
+	                                    break;
+	                                case WM_RBUTTONUP:
+	                                    if (GetCursorPos(mousePosition)) {
+	                                        HMENU menu = CreatePopupMenu();
+	                                        if (statusText != null && !statusText.isEmpty()) {
+	                                            AppendMenu(menu, MF_STRING | MF_GRAYED, 0, statusText);
+	                                            AppendMenu(menu, MF_SEPARATOR, 0, null);
+	                                        }
+	                                        int i = 1;
+	                                        for (MenuEntry entry : menuEntries) {
+	                                            final int IDR_ENTRY = (i++);
+	                                            AppendMenu(menu, MF_STRING, IDR_ENTRY, entry.getText());
+	                                        }
+	                                        SetForegroundWindow(hWnd);
+	                                        int choice = TrackPopupMenuEx(menu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD, mousePosition.x, mousePosition.y, hWnd, null);
+	                                        if (choice > 0) {
+	                                            Win32MenuEntry chosenEntry = (Win32MenuEntry) menuEntries.get(choice - 1);
+	                                            if (chosenEntry != null) {
+	                                                chosenEntry.getCallback().onClick(tray, chosenEntry);
+	                                            }
+	                                        }
+	                                    }
+	                                    break;
+	                            }
+	                        } else if (message == wmTaskbarCreated) {
+	                            // Add icon again if explorer crashed.
+	                            Shell_NotifyIcon(NIM_ADD, notifyIconData);
+	                        }
+	                        return DefWindowProc(hWnd, message, wParameter, lParameter);
+	                    }
+	                };
+	                if (Win32.is64Bit)
+	                    SetWindowLongPtr(hwnd, GWL_WNDPROC, wndProc);
+	                else
+	                    SetWindowLong(hwnd, GWL_WNDPROC, wndProc);
+	
+	                try {
+	                    barrier.await();
+	                } catch (Exception ignored) {
+	                }
+	
+	                MSG msg = new MSG();
+	                while (GetMessage(msg, null, 0, 0)) {
+	                    TranslateMessage(msg);
+	                    DispatchMessage(msg);
+	                }
+	            }
+	        };
+	        trayThread.start();
+	        try {
+	            barrier.await();
+	        } catch (Exception ignored) {
+	        }
+    	}
     }
 
 }

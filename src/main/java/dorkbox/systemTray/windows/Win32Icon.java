@@ -48,7 +48,8 @@ public class Win32Icon {
     public static BufferedImage scale(BufferedImage img, int s) {
         BufferedImage out = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = out.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+//        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.drawImage(img, 0, 0, s, s, null);
         g.dispose();
         return out;

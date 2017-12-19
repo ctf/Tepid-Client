@@ -48,9 +48,11 @@ public class Main {
     static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
+    static {SystemTray.FORCE_GTK2 = true;}
+	private static SystemTray systemTray = SystemTray.getSystemTray();
 
     public static void main(String[] args) {
-        System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
+        System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");        
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
         if (args.length > 0) {
@@ -61,6 +63,25 @@ public class Main {
                 System.exit(1);
             }
             System.exit(0);
+        }
+        if (systemTray == null) {
+            throw new RuntimeException("Unable to load SystemTray!");
+        }
+        try {
+            File icon = File.createTempFile("tepid", ".png");
+            icon.delete();
+            if (System.getProperty("os.name").startsWith("Windows")) {
+                Files.copy(Utils.getResourceAsStream("trayicon/16_loading.png"), icon.toPath());
+//				Files.copy(Utils.getResourceAsStream("trayicon/32_loading.png"), icon.toPath());
+            } else {
+                Files.copy(Utils.getResourceAsStream("trayicon/32_loading.png"), icon.toPath());
+            }
+            icon.deleteOnExit();
+            systemTray.setIcon(icon.getAbsolutePath());
+            systemTray.setStatus("Loading...");
+            systemTray.addMenuEntry("Quit", (systemTray12, menuEntry) -> System.exit(0));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
         String defaultQueue = null;
@@ -82,7 +103,7 @@ public class Main {
             }
         }
 
-        int quota = 0;
+        Integer quota = null;
         try {
             if (!token.isEmpty()) {
                 String auth = "Token " + new String(Base64.encode(token.getBytes()));
@@ -91,13 +112,9 @@ public class Main {
             }
         } catch (Exception ignored) {
         }
-        System.out.println(quota);
-
-        SystemTray.FORCE_GTK2 = true;
-        SystemTray systemTray = SystemTray.getSystemTray();
-        if (systemTray == null) {
-            throw new RuntimeException("Unable to load SystemTray!");
-        }
+        if (quota != null) setTrayQuota(quota);
+        else systemTray.setStatus("Welcome to CTF");
+        systemTray.removeMenuEntry("Quit");
         try {
             File icon = File.createTempFile("tepid", ".png");
             icon.delete();
@@ -112,7 +129,6 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        systemTray.setStatus(quota + " Pages Left");
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {
@@ -140,7 +156,7 @@ public class Main {
                         if (token == null || token.isEmpty()) {
                             Session session = null;
                             while (session == null) {
-                                Result result = PasswordDialog.prompt().getResult();
+                                Result result = PasswordDialog.prompt("mail.mcgill.ca").getResult();
                                 session = getSession(result.upn, result.pw);
                             }
                             token = session.getUser().shortUser + ":" + session.getId();
@@ -204,6 +220,10 @@ public class Main {
         } catch (Exception ignored) {
         }
         return null;
+    }
+    
+    public static void setTrayQuota(int quota) {
+    	systemTray.setStatus(quota + " Pages Left");
     }
 
 }

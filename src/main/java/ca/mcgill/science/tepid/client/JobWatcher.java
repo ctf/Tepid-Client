@@ -31,14 +31,14 @@ public class JobWatcher extends Thread {
     @Override
     public void run() {
         PrintJob j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
-        Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {
-        });
+        Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {});
         Notification n = new Notification();
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + j.truncateName(28) + "\" is currently being received from the application. ");
         n.setVisible(true);
         while (!Thread.currentThread().isInterrupted()) {
             JsonNode change = tepidServer.path("jobs/job").path(id).path("_changes").queryParam("feed", "longpoll").queryParam("since", "now")
                     .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(ObjectNode.class);
+            System.out.println(change);
             if (change.get("results").has(0)) {
                 j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
                 if (j.getFailed() != null) {
@@ -86,6 +86,7 @@ public class JobWatcher extends Thread {
                 if (status == Status.SENDING) {
                     if (j.getPrinted() != null) {
                         this.status = Status.PRINTED;
+                        //Note that the 2 here is correct as each colour page has already been counted once in j.getPages()
                         int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class),
                                 creditsBefore = credits + j.getColorPages() * 2 + j.getPages();
                         if (n.isClosed()) {
@@ -93,6 +94,7 @@ public class JobWatcher extends Thread {
                             n.setVisible(true);
                         }
                         n.setQuota(creditsBefore, credits, "You have " + credits + " pages left", "\"" + j.truncateName(28) + "\" sent to printer " + destination.getName() + ".");
+                        Main.setTrayQuota(credits);
                         try {
                             Thread.sleep(10000);
                         } catch (InterruptedException ignored) {

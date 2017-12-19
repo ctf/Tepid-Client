@@ -89,3 +89,9 @@ crashlytics.properties
 crashlytics-build.properties
 ### Vagrant template
 .vagrant/
+
+############################################################################
+# Eclipse
+############################################################################
+.project
+.classpath

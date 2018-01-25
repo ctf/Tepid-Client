@@ -177,7 +177,7 @@ public class PasswordDialog extends JFrame {
         lblDomain.setForeground(new Color(0x0));
         lblDomain.setFont(new Font("Arial", Font.PLAIN, 12));
         contentPane.add(lblDomain);
-        JLabel lblDisclaimer = new JLabel("<html><p>By continuing you agree<br>to the <a href=\"***REMOVED***.htm\">terms & conditions</a></p></html>");
+        JLabel lblDisclaimer = new JLabel("<html><p>By continuing you agree<br>to the <a href=\"***REMOVED***\">terms & conditions</a></p></html>");
         lblDisclaimer.setBounds(18, 194, 200, 26);
         lblDisclaimer.setForeground(new Color(0x0));
         lblDisclaimer.setFont(new Font("Arial", Font.PLAIN, 10));

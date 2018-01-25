@@ -188,7 +188,7 @@ public class PasswordDialog extends JFrame {
             public void mouseReleased(MouseEvent e) {
                 if (Desktop.isDesktopSupported()) {
                     try {
-                        Desktop.getDesktop().browse(new URI("http://taskforce.science.mcgill.ca/about.html"));
+                        Desktop.getDesktop().browse(new URI("http://taskforce.science.mcgill.ca/terms"));
                     } catch (IOException | URISyntaxException e1) {
                         e1.printStackTrace();
                     }

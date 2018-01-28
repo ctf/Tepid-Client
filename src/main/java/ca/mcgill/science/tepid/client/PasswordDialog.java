@@ -66,7 +66,8 @@ public class PasswordDialog extends JFrame {
         setResizable(false);
         setIconImages(Arrays.asList(icon));
         CurrentUser cu = CurrentUser.getCurrentUser();
-        this.inDomain = cu.domain.equals(domain);
+	System.out.println(cu);
+        this.inDomain = cu.domain == null ? false : cu.domain.equals(domain);
         this.user = inDomain ? cu.user : "";
         addWindowListener(new WindowAdapter() {
             @Override

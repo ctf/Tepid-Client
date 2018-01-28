@@ -16,10 +16,12 @@ public class Api {
     public static ITepid instance() {
         if (instance == null)
             instance = new TepidApi(Main.serverUrl, true)
-                    .create(config -> {
-                        config.setTokenRetriever(() -> Main.token);
-                        return Unit.INSTANCE;
-                    });
+                    .create(
+                            config -> {
+//                        config.setTokenRetriever(() -> Main.token);
+                                return Unit.INSTANCE;
+                            }
+                    );
         return instance;
     }
 

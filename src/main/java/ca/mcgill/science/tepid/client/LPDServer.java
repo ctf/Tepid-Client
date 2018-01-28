@@ -1,6 +1,6 @@
 package ca.mcgill.science.tepid.client;
 
-import ca.mcgill.science.tepid.common.PrintJob;
+import ca.mcgill.science.tepid.models.data.PrintJob;
 
 import java.io.*;
 import java.net.InetAddress;

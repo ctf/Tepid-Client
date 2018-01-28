@@ -1,10 +1,10 @@
 package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.client.PasswordDialog.Result;
-import ca.mcgill.science.tepid.common.PrintQueue;
-import ca.mcgill.science.tepid.common.Session;
-import ca.mcgill.science.tepid.common.SessionRequest;
 import ca.mcgill.science.tepid.common.Utils;
+import ca.mcgill.science.tepid.models.data.PrintQueue;
+import ca.mcgill.science.tepid.models.data.Session;
+import ca.mcgill.science.tepid.models.data.SessionRequest;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dorkbox.systemTray.SystemTray;
 import in.waffl.q.PromiseRejectionException;
@@ -20,11 +20,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.WriterInterceptor;
 import java.awt.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.Locale;
@@ -49,12 +45,16 @@ public class Main {
     public static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
-    static {SystemTray.FORCE_GTK2 = true;}
-	private static SystemTray systemTray = SystemTray.getSystemTray();
-	private static File trayIcon, trayIconPrinting;
+
+    static {
+        SystemTray.FORCE_GTK2 = true;
+    }
+
+    private static SystemTray systemTray = SystemTray.getSystemTray();
+    private static File trayIcon, trayIconPrinting;
 
     public static void main(String[] args) {
-        System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");        
+        System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
         if (args.length > 0) {
@@ -100,7 +100,7 @@ public class Main {
                     token = un + ":" + sessionId;
                     tokenUser = un;
                 } else {
-                	System.err.println("Saved session token could not be validated");
+                    System.err.println("Saved session token could not be validated");
                 }
             }
         }
@@ -113,17 +113,17 @@ public class Main {
             }
         } catch (Exception ignored) {
         }
-        
+
         PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
         String defaultQueue = null;
         for (PrintQueue q : queues) {
-            queueIds.put(Utils.newId(), q.name);
-            if (q.defaultOn != null && Utils.wildcardMatch(q.defaultOn, Utils.getHostname())) {
-                defaultQueue = q.name;
+            queueIds.put(Utils.newId(), q.getName());
+            if (q.getDefaultOn() != null && Utils.wildcardMatch(q.getDefaultOn(), Utils.getHostname())) {
+                defaultQueue = q.getName();
             }
         }
         manager.bind(queueIds, defaultQueue);
-        
+
         systemTray.removeMenuEntry("Quit");
         try {
             trayIcon = File.createTempFile("tepid", ".png");
@@ -175,7 +175,7 @@ public class Main {
                                 Result result = PasswordDialog.prompt("mail.mcgill.ca").getResult();
                                 session = getSession(result.upn, result.pw);
                             }
-                            token = session.getUser().shortUser + ":" + session.getId();
+                            token = session.getUser().getShortUser() + ":" + session.getId();
                             System.out.println("new token: " + token);
                             try {
                                 persist.setProperty("token", token);
@@ -223,7 +223,7 @@ public class Main {
     private static boolean validateToken(String un, String token) {
         try {
             Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
-            return s.getExpiration().getTime() > System.currentTimeMillis();
+            return s.isValid();
         } catch (Exception ignored) {
         }
         return false;
@@ -231,25 +231,26 @@ public class Main {
 
     private static Session getSession(String un, String pw) {
         try {
-            SessionRequest sr = new SessionRequest().withUsername(un).withPassword(pw).withPersistent(true).withPermanent(true);
+            SessionRequest sr = new SessionRequest(un, pw, true, true);
             return tepidServer.path("sessions").request(MediaType.APPLICATION_JSON).post(Entity.entity(sr, MediaType.APPLICATION_JSON)).readEntity(Session.class);
         } catch (Exception ignored) {
         }
         return null;
     }
-    
+
     public static void setTrayQuota(int quota) {
-    	systemTray.setStatus(quota + " Pages Left");
+        systemTray.setStatus(quota + " Pages Left");
     }
-    
+
     private static int trayPrinting;
+
     public static void setTrayPrinting(boolean printing) {
-    	trayPrinting += printing ? 1 : -1;
-    	if (trayPrinting > 0) {
-    		systemTray.setIcon(trayIconPrinting.getAbsolutePath());
-    	} else {
-    		systemTray.setIcon(trayIcon.getAbsolutePath());
-    	}
+        trayPrinting += printing ? 1 : -1;
+        if (trayPrinting > 0) {
+            systemTray.setIcon(trayIconPrinting.getAbsolutePath());
+        } else {
+            systemTray.setIcon(trayIcon.getAbsolutePath());
+        }
     }
 
 }

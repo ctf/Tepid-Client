@@ -1,8 +1,8 @@
 package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.client.notifications.Notification;
-import ca.mcgill.science.tepid.common.Destination;
-import ca.mcgill.science.tepid.common.PrintJob;
+import ca.mcgill.science.tepid.models.data.Destination;
+import ca.mcgill.science.tepid.models.data.PrintJob;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.glassfish.jersey.jackson.JacksonFeature;
@@ -31,7 +31,8 @@ public class JobWatcher extends Thread {
     @Override
     public void run() {
         PrintJob j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
-        Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {});
+        Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {
+        });
         Notification n = new Notification();
         Main.setTrayPrinting(true);
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + j.truncateName(28) + "\" is currently being received from the application. ");
@@ -42,30 +43,33 @@ public class JobWatcher extends Thread {
             System.out.println(change);
             if (change.get("results").has(0)) {
                 j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
-                if (j.getFailed() != null) {
-                	Main.setTrayPrinting(false);
-                    if (j.getError().equalsIgnoreCase("insufficient quota")) {
-                        this.status = Status.NO_QUOTA;
-                        int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
-                        if (n.isClosed()) {
-                            n = new Notification();
-                            n.setVisible(true);
+                if (j.getFailed() != -1) {
+                    Main.setTrayPrinting(false);
+                    // todo add generic error if actual error is null
+                    if (j.getError() != null) {
+                        if (j.getError().equalsIgnoreCase("insufficient quota")) {
+                            this.status = Status.NO_QUOTA;
+                            int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
+                            if (n.isClosed()) {
+                                n = new Notification();
+                                n.setVisible(true);
+                            }
+                            n.setStatus(0xB71C1C, "noquota", "Insufficient balance", "We cannot print \"" + j.truncateName(28) + "\" (" + j.getPages() + " pages) because you only have " + credits + " pages left this term.");
+                        } else if (j.getError().equalsIgnoreCase("color disabled")) {
+                            this.status = Status.FAIL_COLOR;
+                            if (n.isClosed()) {
+                                n = new Notification();
+                                n.setVisible(true);
+                            }
+                            n.setStatus(0xB71C1C, "color", "Cannot print colour job", "\"" + j.truncateName(28) + "\" will not print because colour printing is not enabled for your account.");
+                        } else {
+                            this.status = Status.FAIL;
+                            if (n.isClosed()) {
+                                n = new Notification();
+                                n.setVisible(true);
+                            }
+                            n.setStatus(0xB71C1C, "fail", "Failed to print", "Your job \"" + j.truncateName(28) + "\" failed during processing, please contact CTF.");
                         }
-                        n.setStatus(0xB71C1C, "noquota", "Insufficient balance", "We cannot print \"" + j.truncateName(28) + "\" (" + j.getPages() + " pages) because you only have " + credits + " pages left this term.");
-                    } else if (j.getError().equalsIgnoreCase("color disabled")) {
-                        this.status = Status.FAIL_COLOR;
-                        if (n.isClosed()) {
-                            n = new Notification();
-                            n.setVisible(true);
-                        }
-                        n.setStatus(0xB71C1C, "color", "Cannot print colour job", "\"" + j.truncateName(28) + "\" will not print because colour printing is not enabled for your account.");
-                    } else {
-                        this.status = Status.FAIL;
-                        if (n.isClosed()) {
-                            n = new Notification();
-                            n.setVisible(true);
-                        }
-                        n.setStatus(0xB71C1C, "fail", "Failed to print", "Your job \"" + j.truncateName(28) + "\" failed during processing, please contact CTF.");
                     }
                     try {
                         Thread.sleep(10000);
@@ -75,7 +79,7 @@ public class JobWatcher extends Thread {
                     break;
                 }
                 if (status == Status.PROCESSING) {
-                    if (j.getProcessed() != null && j.getDestination() != null) {
+                    if (j.getProcessed() != -1 && j.getDestination() != null) {
                         this.status = Status.SENDING;
                         this.destination = destinations.get(j.getDestination());
                         if (n.isClosed()) {
@@ -86,8 +90,8 @@ public class JobWatcher extends Thread {
                     }
                 }
                 if (status == Status.SENDING) {
-                    if (j.getPrinted() != null) {
-                    	Main.setTrayPrinting(false);
+                    if (j.getPrinted() != -1) {
+                        Main.setTrayPrinting(false);
                         this.status = Status.PRINTED;
                         //Note that the 2 here is correct as each colour page has already been counted once in j.getPages()
                         int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class),

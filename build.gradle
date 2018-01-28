@@ -16,7 +16,7 @@ dependencies {
     
     compile 'com.github.cpicon92:Q:ccb4d8fb9d'
 
-//    compile 'com.github.CTFMcGill:TEPID-commons:06d31a0f550e30261bdfec52efb93c282f4a608e'
+    compile "ca.mcgill:tepid-commons:$TEPID_COMMONS"
 
     // https://mvnrepository.com/artifact/net.sf.jacob-project/jacob
 //    compile group: 'net.sf.jacob-project', name: 'jacob', version: '1.14.3'

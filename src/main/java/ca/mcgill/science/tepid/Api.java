@@ -15,7 +15,7 @@ public class Api {
 
     public static ITepid instance() {
         if (instance == null)
-            instance = new TepidApi(Main.serverUrl, false)
+            instance = new TepidApi(Main.serverUrl, true)
                     .create(config -> {
                         config.setTokenRetriever(() -> Main.token);
                         return Unit.INSTANCE;

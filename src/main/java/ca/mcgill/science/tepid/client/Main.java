@@ -25,6 +25,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -35,8 +36,12 @@ public class Main {
     /*
      * All urls should go here so we avoid issues!
      */
-    public final static String baseUrl = "https://tepid.science.mcgill.ca";
-    public final static String serverUrl = baseUrl + ":8443/tepid";
+    public final static String baseUrl = "http://testpid.science.mcgill.ca";
+    public final static String serverUrl = baseUrl + ":8080/tepid/";
+
+//    public final static String baseUrl = "https://tepid.science.mcgill.ca";
+//    public final static String serverUrl = baseUrl + ":8443/tepid";
+
     //	final static String serverUrl = "http://localhost:8080/tepid";
     final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(serverUrl),
             tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
@@ -59,6 +64,7 @@ public class Main {
         System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
+        System.out.println("Server url: " + serverUrl);
         if (args.length > 0) {
             if (args[0].equals("--cleanup")) {
                 manager.cleanPrinters();
@@ -116,7 +122,8 @@ public class Main {
         } catch (Exception ignored) {
         }
 
-        PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
+        List<PrintQueue> queues = Api.fetch(ITepid::getQueues);
+
         String defaultQueue = null;
         for (PrintQueue q : queues) {
             queueIds.put(Utils.newId(), q.getName());
@@ -147,6 +154,7 @@ public class Main {
         }
         if (quota != null) setTrayQuota(quota);
         else systemTray.setStatus("Welcome to CTF");
+        System.out.println("Welcome to CTF");
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {

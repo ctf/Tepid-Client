@@ -18,7 +18,7 @@ public class Api {
             instance = new TepidApi(Main.serverUrl, true)
                     .create(
                             config -> {
-//                        config.setTokenRetriever(() -> Main.token);
+                                config.setTokenRetriever(() -> Main.token);
                                 return Unit.INSTANCE;
                             }
                     );

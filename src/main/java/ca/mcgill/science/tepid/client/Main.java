@@ -1,5 +1,7 @@
 package ca.mcgill.science.tepid.client;
 
+import ca.mcgill.science.tepid.Api;
+import ca.mcgill.science.tepid.api.ITepid;
 import ca.mcgill.science.tepid.client.PasswordDialog.Result;
 import ca.mcgill.science.tepid.common.Utils;
 import ca.mcgill.science.tepid.models.data.PrintQueue;
@@ -33,8 +35,8 @@ public class Main {
     /*
      * All urls should go here so we avoid issues!
      */
-    final static String baseUrl = "https://tepid.science.mcgill.ca";
-    final static String serverUrl = baseUrl + ":8443/tepid";
+    public final static String baseUrl = "https://tepid.science.mcgill.ca";
+    public final static String serverUrl = baseUrl + ":8443/tepid";
     //	final static String serverUrl = "http://localhost:8080/tepid";
     final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(serverUrl),
             tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
@@ -232,7 +234,7 @@ public class Main {
     private static Session getSession(String un, String pw) {
         try {
             SessionRequest sr = new SessionRequest(un, pw, true, true);
-            return tepidServer.path("sessions").request(MediaType.APPLICATION_JSON).post(Entity.entity(sr, MediaType.APPLICATION_JSON)).readEntity(Session.class);
+            return Api.fetch(iTepid -> iTepid.getSession(sr));
         } catch (Exception ignored) {
         }
         return null;

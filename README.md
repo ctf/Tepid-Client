@@ -25,7 +25,7 @@ Notable commands:
 Windows: `cd [out]; tepid.exe`
 <br/>The error `com.jacob.com.ComFailException: Invoke of: Put_` when launching `WindowsPrinterMgmt` is usually fixed by installing "Xerox Global Print Driver PS" from the Xerox website (sometimes you may need to add a fake printer to force Windows to install the driver before it works)
 
-Linux: `java -classpath [out]/* ca.mcgill.science.tepid.client.Main`
+Linux: `java -classpath "[out]/*" ca.mcgill.science.tepid.client.Main`
 <br/>(This is the same as `commandLinux`)
 
 ### Update

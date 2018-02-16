@@ -1,7 +1,7 @@
 group 'ca.mcgill.science.ctf.tepid'
 
 apply plugin: 'java'
-
+apply plugin: 'idea'
 sourceCompatibility = 1.8
 
 repositories {

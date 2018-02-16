@@ -2,9 +2,11 @@ package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.Api;
 import ca.mcgill.science.tepid.api.ITepid;
+import ca.mcgill.science.tepid.api.ITepidKt;
 import ca.mcgill.science.tepid.client.PasswordDialog.Result;
 import ca.mcgill.science.tepid.common.Utils;
 import ca.mcgill.science.tepid.models.data.PrintQueue;
+import ca.mcgill.science.tepid.models.data.PutResponse;
 import ca.mcgill.science.tepid.models.data.Session;
 import ca.mcgill.science.tepid.models.data.SessionRequest;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -39,10 +41,14 @@ public class Main {
     public final static String baseUrl = "http://testpid.science.mcgill.ca";
     public final static String serverUrl = baseUrl + ":8080/tepid/";
 
-//    public final static String baseUrl = "https://tepid.science.mcgill.ca";
-//    public final static String serverUrl = baseUrl + ":8443/tepid";
+    /*
+     *These are URL's not currently in use.
+     *public final static String baseUrl = "https://tepid.science.mcgill.ca";
+     *public final static String serverUrl = baseUrl + ":8443/tepid";
+     *final static String serverUrl = "http://localhost:8080/tepid";
+     */
 
-    //	final static String serverUrl = "http://localhost:8080/tepid";
+
     final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(serverUrl),
             tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
                 final OutputStream outputStream = ctx.getOutputStream();
@@ -52,6 +58,7 @@ public class Main {
     public static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
+
 
     static {
         SystemTray.FORCE_GTK2 = true;
@@ -77,9 +84,10 @@ public class Main {
         if (systemTray == null) {
             throw new RuntimeException("Unable to load SystemTray!");
         }
+
         try {
             File icon = File.createTempFile("tepid", ".png");
-            icon.delete();
+            icon.delete(); //maybe delete this line? seems weird to be deleting immediately after creation
             if (System.getProperty("os.name").startsWith("Windows")) {
                 Files.copy(Utils.getResourceAsStream("trayicon/16_loading.png"), icon.toPath());
 //				Files.copy(Utils.getResourceAsStream("trayicon/32_loading.png"), icon.toPath());
@@ -116,8 +124,11 @@ public class Main {
         try {
             if (!token.isEmpty()) {
                 String auth = "Token " + new String(Base64.encode(token.getBytes()));
-                quota = tepidServer.path("users").path(tokenUser).path("quota")
-                        .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
+
+                //test this:
+                quota = Api.fetch(iTepid -> iTepid.getQuota(auth));
+                //quota = tepidServer.path("users").path(tokenUser).path("quota")
+                //        .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
             }
         } catch (Exception ignored) {
         }
@@ -175,7 +186,7 @@ public class Main {
                 System.out.println(p);
                 String auth = "", id = null;
                 boolean canceled = false;
-                Response response = null;
+                PutResponse response = null;
                 do {
                     try {
                         System.out.println("old token: " + token);
@@ -199,8 +210,9 @@ public class Main {
                             }
                         }
                         auth = "Token " + new String(Base64.encode(token.getBytes()));
-                        response = tepidServer.path("jobs").request(MediaType.APPLICATION_JSON).header("Authorization", auth).post(Entity.entity(p, MediaType.APPLICATION_JSON));
-                        id = response.readEntity(ObjectNode.class).get("id").asText();
+                        response = Api.fetch(iTepid -> iTepid.createNewJob(p));
+                        //response = tepidServer.path("jobs").request(MediaType.APPLICATION_JSON).header("Authorization", auth).post(Entity.entity(p, MediaType.APPLICATION_JSON));
+                        id = response.getId();
                     } catch (PromiseRejectionException e) {
                         canceled = true;
                         break;
@@ -212,6 +224,7 @@ public class Main {
                 while (response == null || id == null || response.getStatus() == Response.Status.UNAUTHORIZED.getStatusCode());
                 if (!canceled) {
                     new JobWatcher(id, auth).start();
+                    //come back later
                     response = tepidServerXz.path("jobs").path(id).request(MediaType.TEXT_PLAIN).header("Authorization", auth).put(Entity.entity(is, "application/x-xz"));
                     System.err.println(response.readEntity(String.class));
                 } else {
@@ -232,7 +245,8 @@ public class Main {
 
     private static boolean validateToken(String un, String token) {
         try {
-            Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
+            Session s = Api.fetch(iTepid -> iTepid.validateToken(un,token));
+           // Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
             return s.isValid();
         } catch (Exception ignored) {
         }

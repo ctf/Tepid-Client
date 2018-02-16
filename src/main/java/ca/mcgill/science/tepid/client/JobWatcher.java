@@ -1,5 +1,6 @@
 package ca.mcgill.science.tepid.client;
 
+import ca.mcgill.science.tepid.Api;
 import ca.mcgill.science.tepid.client.notifications.Notification;
 import ca.mcgill.science.tepid.models.data.Destination;
 import ca.mcgill.science.tepid.models.data.PrintJob;
@@ -30,7 +31,8 @@ public class JobWatcher extends Thread {
 
     @Override
     public void run() {
-        PrintJob j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
+        PrintJob j = Api.fetch(iTepid -> iTepid.getJob(id));
+        //  PrintJob j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
         Map<String, Destination> destinations = tepidServer.path("destinations").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get().readEntity(new GenericType<HashMap<String, Destination>>() {
         });
         Notification n = new Notification();
@@ -38,18 +40,22 @@ public class JobWatcher extends Thread {
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + j.truncateName(28) + "\" is currently being received from the application. ");
         n.setVisible(true);
         while (!Thread.currentThread().isInterrupted()) {
-            JsonNode change = tepidServer.path("jobs/job").path(id).path("_changes").queryParam("feed", "longpoll").queryParam("since", "now")
-                    .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(ObjectNode.class);
+            JsonNode change = Api.fetch(iTepid -> iTepid.getJobChanges(id));
+            //JsonNode change = tepidServer.path("jobs/job").path(id).path("_changes").queryParam("feed", "longpoll").queryParam("since", "now")
+            //      .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(ObjectNode.class);
             System.out.println(change);
             if (change.get("results").has(0)) {
-                j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
+                j = Api.fetch(iTepid -> iTepid.getJob(id));
+                //j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
                 if (j.getFailed() != -1) {
                     Main.setTrayPrinting(false);
                     // todo add generic error if actual error is null
                     if (j.getError() != null) {
                         if (j.getError().equalsIgnoreCase("insufficient quota")) {
                             this.status = Status.NO_QUOTA;
-                            int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
+                            PrintJob finalJ = j;
+                            int credits = Api.fetch(iTepid -> iTepid.getQuota(finalJ.getUserIdentification()));
+                            // int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
                             if (n.isClosed()) {
                                 n = new Notification();
                                 n.setVisible(true);
@@ -94,8 +100,10 @@ public class JobWatcher extends Thread {
                         Main.setTrayPrinting(false);
                         this.status = Status.PRINTED;
                         //Note that the 2 here is correct as each colour page has already been counted once in j.getPages()
-                        int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class),
-                                creditsBefore = credits + j.getColorPages() * 2 + j.getPages();
+                        PrintJob finalJ1 = j;
+                        int credits = Api.fetch(iTepid -> iTepid.getQuota(finalJ1.getUserIdentification()));
+                        //int credits = tepidServer.path("users").path(j.getUserIdentification()).path("quota").request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class),
+                        int creditsBefore = credits + j.getColorPages() * 2 + j.getPages();
                         if (n.isClosed()) {
                             n = new Notification();
                             n.setVisible(true);

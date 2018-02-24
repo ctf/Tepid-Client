@@ -1,4 +1,5 @@
 group 'ca.mcgill.science.ctf.tepid'
+version '1.2.3'
 
 apply plugin: 'java'
 
@@ -15,6 +16,7 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     
     compile 'com.github.cpicon92:Q:ccb4d8fb9d'
+    compile 'com.github.bhagyas:jspi:13b707dd5a'
 
 //    compile 'com.github.CTFMcGill:TEPID-commons:06d31a0f550e30261bdfec52efb93c282f4a608e'
 
@@ -116,4 +118,12 @@ task tepidWindows(type: GradleBuild) {
 
 task tepidLinux(type: GradleBuild) {
     tasks = ['copyLibs', 'jar']
+}
+
+task msi(type: Exec) {
+	dependsOn "tepidWindows"
+    workingDir "$buildDir/libs"
+    environment "PRODUCTVERSION", version
+    commandLine "cmd","/c","wix.bat"
+    group 'build'
 }

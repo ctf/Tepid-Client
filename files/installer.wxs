@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?define ProductVersion = "$(env.PRODUCTVERSION)"?>
+<?define ProductUpgradeCode = "{115CDB31-1470-413B-A2B6-078BDAB6074A}"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension">
+    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" Name="TEPID" Version="$(var.ProductVersion)" Manufacturer="McGill Science Computer Taskforce" Language="1033">
+        <Package Platform="x64" InstallerVersion="200" Compressed="yes" Comments="The Taskforce Endpoint Printer Integration Driver (TEPID)" />
+        <Media Id="1" Cabinet="product.cab" EmbedCab="yes" />
+        <Icon Id="ProductIcon" SourceFile="tepid.ico" />
+        <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+        <Property Id="ARPHELPLINK" Value="http://ctf.science.mcgill.ca/" />
+        <Property Id="ARPURLINFOABOUT" Value="http://ctf.science.mcgill.ca/" />
+        <Property Id="ARPNOREPAIR" Value="1" />
+        <SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute"/>
+		<CustomAction Id="SetINSTALLDIR"  Property="INSTALLDIR" Value="[PREVIOUSINSTALLFOLDER]" Execute="firstSequence" />
+        <Upgrade Id="$(var.ProductUpgradeCode)">
+            <UpgradeVersion Property="PREVIOUSVERSIONSINSTALLED" IncludeMinimum="yes" Minimum="0.0.1" Maximum="$(var.ProductVersion)" OnlyDetect="no" MigrateFeatures="yes" />
+            <UpgradeVersion Minimum="$(var.ProductVersion)" IncludeMinimum="no" OnlyDetect="yes" Language="1033" Property="NEWERPRODUCTFOUND" />
+        </Upgrade>
+        <CustomAction Id="PreventDowngrading" Error="Newer version already installed." />
+        <CustomAction Id="SET_SHORTCUTDIR" Property="SHORTCUTDIR" Value="[StartupFolder]" Execute="firstSequence" />
+        <CustomAction Id="SET_INSTALLLOCATION" Property="INSTALLLOCATION" Value="[ProgramFiles64Folder][Manufacturer]\[ProductName]" Execute="firstSequence" />
+        <CustomAction Id="SET_TARGETDIR_TO_INSTALLLOCATION" Property="TARGETDIR" Value="[INSTALLLOCATION]" Execute="firstSequence" />
+        <InstallExecuteSequence>
+            <Custom Action="PreventDowngrading" After="FindRelatedProducts">NEWERPRODUCTFOUND AND NOT Installed</Custom>
+            <RemoveExistingProducts After="InstallInitialize" />
+        </InstallExecuteSequence>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFiles64Folder">
+				<Directory Id="ManufacturerFolder" Name="!(bind.property.Manufacturer)">
+					<Directory Id="INSTALLLOCATION" Name="!(bind.property.ProductName)">
+						<Component Id="tepid.exe" Guid="*" Win64="yes">
+							<File Id="exeFile" Source="tepid.exe" />
+						</Component>
+						<Component Id="tepid.ini" Guid="*" Win64="yes">
+							<File Id="iniFile" Source="tepid.ini" />
+						</Component>
+						<Component Id="tepid.jar" Guid="*" Win64="yes">
+							<File Id="jarFile" Source="tepid-$(var.ProductVersion).jar" />
+						</Component>
+						<Directory Id="dir_libs" />
+					</Directory>
+				</Directory>
+			</Directory>
+			<Directory Id="StartupFolder" Name="StartupFolder">
+				<Component Id="ApplicationShortcuts" Guid="*">
+					<Shortcut Id="TEPID" Name="TEPID" Target="[INSTALLLOCATION]tepid.exe" Description="The Taskforce Endpoint Printer Integration Driver" WorkingDirectory="INSTALLLOCATION" />
+					<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+				</Component>
+			</Directory>
+		</Directory>
+		<WixVariable Id="WixUILicenseRtf" Value="installer_license.rtf" />
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLLOCATION" />
+		<UIRef Id="WixUI_InstallDir" />	
+        <Feature Id="MainFeature" Title="MainFeature" Level="1">
+			<ComponentRef Id="ApplicationShortcuts"/>
+            <ComponentRef Id="tepid.exe" />
+            <ComponentRef Id="tepid.ini" />
+            <ComponentRef Id="tepid.jar" />
+            <ComponentGroupRef Id="libsDir" />
+        </Feature>
+    </Product>
+</Wix>

@@ -233,7 +233,8 @@ public class Main {
         try {
             SessionRequest sr = new SessionRequest(un, pw, true, true);
             return tepidServer.path("sessions").request(MediaType.APPLICATION_JSON).post(Entity.entity(sr, MediaType.APPLICATION_JSON)).readEntity(Session.class);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.out.println("Failed to get session " + e.getMessage());
         }
         return null;
     }

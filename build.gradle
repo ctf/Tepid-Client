@@ -1,4 +1,5 @@
 group 'ca.mcgill.science.ctf.tepid'
+version '1.2.3'
 
 apply plugin: 'java'
 
@@ -116,4 +117,12 @@ task tepidWindows(type: GradleBuild) {
 
 task tepidLinux(type: GradleBuild) {
     tasks = ['copyLibs', 'jar']
+}
+
+task msi(type: Exec) {
+	dependsOn "tepidWindows"
+    workingDir "$buildDir/libs"
+    environment "PRODUCTVERSION", version
+    commandLine "cmd","/c","wix.bat"
+    group 'build'
 }

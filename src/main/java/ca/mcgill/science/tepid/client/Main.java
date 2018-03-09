@@ -224,7 +224,8 @@ public class Main {
         try {
             Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
             return s.isValid();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("Failed to validate token " + e.getMessage());
         }
         return false;
     }

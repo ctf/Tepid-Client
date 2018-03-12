@@ -223,7 +223,7 @@ public class Main {
     private static boolean validateToken(String un, String token) {
         try {
             Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
-            return s.isValid();
+            return s.getExpiration() == -1 || s.getExpiration() > System.currentTimeMillis();
         } catch (Exception e) {
             System.err.println("Failed to validate token " + e.getMessage());
         }

@@ -34,8 +34,7 @@ public interface PrinterMgmt {
         try {
             deletePrinterImpl(queue, port);
         } catch (IOException | InterruptedException e) {
-            System.err.println("Delete printer error");
-            e.printStackTrace();
+            System.err.println("Delete printer error " + e.getMessage());
         }
     }
 
@@ -57,6 +56,7 @@ public interface PrinterMgmt {
         Runtime.getRuntime().addShutdownHook(new Thread("Unmount Printers") {
             @Override
             public void run() {
+                System.out.println("Unmounting "+ queueIds.size() +" printers");
                 queueIds.forEach((port, queue) -> deletePrinter(queue, port));
             }
         });

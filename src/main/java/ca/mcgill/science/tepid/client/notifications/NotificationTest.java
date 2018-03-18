@@ -3,12 +3,12 @@ package ca.mcgill.science.tepid.client.notifications;
 public class NotificationTest {
 
     public static void main(String[] args) throws InterruptedException {
-    	String jobName = "blah_blah_blah.docx - Microsoft Word";
+        String jobName = "blah_blah_blah.docx - Microsoft Word";
         Notification n = new Notification();
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + jobName + "\" is currently being received from the application. ");
         n.setVisible(true);
         Thread.sleep(3000);
-        n.setStatus(0x4D983E, "sending", "Sending job to printer", "\"" + jobName + "\" has processed and is being sent to 1B18-Southpole.");   
+        n.setStatus(0x4D983E, "sending", "Sending job to printer", "\"" + jobName + "\" has processed and is being sent to 1B18-Southpole.");
         Thread.sleep(3000);
 //        Thread.sleep(2000);
 //        n.setQuota(15, 103, "Topping up your quota","Kaching kaching");

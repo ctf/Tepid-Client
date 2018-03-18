@@ -24,7 +24,7 @@ public class PasswordDialog extends JFrame {
     private Q<Result> deferredResult;
     private JTextField txtUpn;
     private final String user, domain;
-	private final boolean inDomain;
+    private final boolean inDomain;
     private static final BufferedImage[] icon = new BufferedImage[9];
 
     static {

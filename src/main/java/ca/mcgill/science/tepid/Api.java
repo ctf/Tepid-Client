@@ -16,10 +16,10 @@ public class Api {
 
     public static ITepid instance() {
         if (instance == null)
-            instance = new TepidApi(Config.serverUrl, true)
+            instance = new TepidApi(Config.serverUrl(), true)
                     .create(
                             config -> {
-                                config.setTokenRetriever(() -> Main.token);
+                                config.setTokenRetriever(() -> Main.tokenHeader);
                                 return Unit.INSTANCE;
                             }
                     );
@@ -28,6 +28,10 @@ public class Api {
 
     public static <T> T fetch(Function<ITepid, Call<T>> supplier) {
         Call<T> call = supplier.apply(instance());
+        return fetch(call);
+    }
+
+    public static <T> T fetch(Call<T> call) {
         try {
             return call.execute().body();
         } catch (IOException e) {

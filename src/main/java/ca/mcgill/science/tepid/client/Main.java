@@ -2,14 +2,12 @@ package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.Api;
 import ca.mcgill.science.tepid.api.ITepid;
-import ca.mcgill.science.tepid.api.ITepidKt;
 import ca.mcgill.science.tepid.client.PasswordDialog.Result;
 import ca.mcgill.science.tepid.common.Utils;
 import ca.mcgill.science.tepid.models.data.PrintQueue;
 import ca.mcgill.science.tepid.models.data.PutResponse;
 import ca.mcgill.science.tepid.models.data.Session;
 import ca.mcgill.science.tepid.models.data.SessionRequest;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import dorkbox.systemTray.SystemTray;
 import in.waffl.q.PromiseRejectionException;
 import org.glassfish.jersey.internal.util.Base64;
@@ -35,19 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
 
-    /*
-     * All urls should go here so we avoid issues!
-     */
 
-    //	final static String serverUrl = "http://localhost:8080/tepid";
-    final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(Config.serverUrl),
-            tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
-                final OutputStream outputStream = ctx.getOutputStream();
-                ctx.setOutputStream(new XZOutputStream(outputStream, new LZMA2Options()));
-                ctx.proceed();
-            }).build().target(Config.serverUrl);
-    public static String token = "", tokenUser = "";
-    final static Properties persist = new Properties();
+    private final static WebTarget tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
+        final OutputStream outputStream = ctx.getOutputStream();
+        ctx.setOutputStream(new XZOutputStream(outputStream, new LZMA2Options()));
+        ctx.proceed();
+    }).build().target(Config.serverUrl());
+    public static String tokenHeader = "", tokenUser = "", token = "";
+    private final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
 
 
@@ -55,15 +48,26 @@ public class Main {
         SystemTray.FORCE_GTK2 = true;
     }
 
+    private static void updateToken(String user, String id) {
+        tokenUser = user != null ? user : "";
+        token = user + ":" + id;
+        tokenHeader = Session.Companion.encodeToHeader(user, id);
+    }
+
+    private static void clearToken() {
+        tokenHeader = "";
+        tokenUser = "";
+        token = "";
+    }
+
     private static SystemTray systemTray = SystemTray.getSystemTray();
     private static File trayIcon, trayIconPrinting;
 
     public static void main(String[] args) {
         System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
-        Config.setup();
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
-        System.out.println("Server url: " + Config.serverUrl);
+        System.out.println("Server url: " + Config.serverUrl());
         if (args.length > 0) {
             if (args[0].equals("--cleanup")) {
                 manager.cleanPrinters();
@@ -105,8 +109,7 @@ public class Main {
             if (parts.length > 1) {
                 String un = parts[0], sessionId = parts[1];
                 if (validateToken(un, sessionId)) {
-                    token = un + ":" + sessionId;
-                    tokenUser = un;
+                    updateToken(un, sessionId);
                 } else {
                     System.err.println("Saved session token could not be validated");
                 }
@@ -114,13 +117,8 @@ public class Main {
         }
         Integer quota = null;
         try {
-            if (!token.isEmpty()) {
-                String auth = "Token " + new String(Base64.encode(token.getBytes()));
-
-                //test this:
-                quota = Api.fetch(iTepid -> iTepid.getQuota(auth));
-                //quota = tepidServer.path("users").path(tokenUser).path("quota")
-                //        .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
+            if (!tokenHeader.isEmpty()) {
+                quota = Api.fetch(iTepid -> iTepid.getQuota(tokenUser));
             }
         } catch (Exception ignored) {
         }
@@ -161,7 +159,7 @@ public class Main {
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {
-                    String accountUrl = Config.baseUrl + "/account?token=" + Base64.encodeAsString(token);
+                    String accountUrl = Config.baseUrl() + "/account?token=" + Base64.encodeAsString(token);
                     URI uri = new URI(accountUrl);
                     System.out.println(uri);
                     Desktop.getDesktop().browse(uri);
@@ -188,7 +186,7 @@ public class Main {
                                 Result result = PasswordDialog.prompt("mail.mcgill.ca").getResult();
                                 session = getSession(result.upn, result.pw);
                             }
-                            token = session.getUser().getShortUser() + ":" + session.getId();
+                            updateToken(session.getUser().getShortUser(), session.getId());
                             System.out.println("new token: " + token);
                             try {
                                 persist.setProperty("token", token);
@@ -208,11 +206,11 @@ public class Main {
                         canceled = true;
                         break;
                     } catch (Exception e) {
-                        token = null;
+                        clearToken();
                         e.printStackTrace();
                     }
                 }
-                while (putResponse == null || ! putResponse.getOk());
+                while (putResponse == null || !putResponse.getOk());
                 if (!canceled) {
                     new JobWatcher(putResponse.getId(), auth).start();
                     //come back later
@@ -237,10 +235,12 @@ public class Main {
 
     private static boolean validateToken(String un, String token) {
         try {
-            Session s = Api.fetch(iTepid -> iTepid.validateToken(un,token));
-           // Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
-            return s != null && s.isValid();
-        } catch (Exception ignored) {
+            Session s = Api.fetch(iTepid -> iTepid.validateToken(un, token));
+            // Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
+            return s != null &&
+                    (s.getExpiration() == -1L || s.getExpiration() > System.currentTimeMillis());
+        } catch (Exception e) {
+            System.out.println("Could not validate token " + e.getMessage());
         }
         return false;
     }

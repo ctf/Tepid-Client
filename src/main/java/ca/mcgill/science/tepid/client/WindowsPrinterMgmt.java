@@ -40,7 +40,8 @@ public class WindowsPrinterMgmt implements PrinterMgmt {
     }
 
     public void addPrinterImpl(String queue, String id, boolean isDefault) throws IOException, InterruptedException {
-    	if (user == null) user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
+        if (user == null)
+            user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
         queue = queue + "-" + user;
         wmi.getPropertyAsComponent("Security_").getPropertyAsComponent("Privileges").invoke("AddAsString", new Variant("SeLoadDriverPrivilege"), new Variant(true));
         Dispatch win32TcpIpPrinterPort = wmi.invoke("Get", "Win32_TCPIPPrinterPort").toDispatch();

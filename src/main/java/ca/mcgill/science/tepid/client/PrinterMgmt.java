@@ -56,7 +56,7 @@ public interface PrinterMgmt {
         Runtime.getRuntime().addShutdownHook(new Thread("Unmount Printers") {
             @Override
             public void run() {
-                System.out.println("Unmounting "+ queueIds.size() +" printers");
+                System.out.println("Unmounting " + queueIds.size() + " printers");
                 queueIds.forEach((port, queue) -> deletePrinter(queue, port));
             }
         });

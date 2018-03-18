@@ -5,7 +5,6 @@ import ca.mcgill.science.tepid.client.notifications.Notification;
 import ca.mcgill.science.tepid.models.data.Destination;
 import ca.mcgill.science.tepid.models.data.PrintJob;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.glassfish.jersey.jackson.JacksonFeature;
 
 import javax.ws.rs.client.ClientBuilder;
@@ -18,7 +17,8 @@ import java.util.Map;
 public class JobWatcher extends Thread {
 
     private final String id, auth;
-    private final WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(Main.serverUrl);
+    private final WebTarget tepidServer =
+            ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(Config.serverUrl());
     private Status status = Status.PROCESSING;
     private Destination destination;
 
@@ -40,11 +40,10 @@ public class JobWatcher extends Thread {
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + j.truncateName(28) + "\" is currently being received from the application. ");
         n.setVisible(true);
         while (!Thread.currentThread().isInterrupted()) {
+            // todo get job changes since last event, not since "now"
             JsonNode change = Api.fetch(iTepid -> iTepid.getJobChanges(id));
-            //JsonNode change = tepidServer.path("jobs/job").path(id).path("_changes").queryParam("feed", "longpoll").queryParam("since", "now")
-            //      .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(ObjectNode.class);
             System.out.println(change);
-            if (change.get("results").has(0)) {
+            if (change != null && change.get("results").has(0)) {
                 j = Api.fetch(iTepid -> iTepid.getJob(id));
                 //j = tepidServer.path("jobs/job").path(id).request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(PrintJob.class);
                 if (j.getFailed() != -1) {

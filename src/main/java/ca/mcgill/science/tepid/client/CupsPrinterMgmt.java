@@ -23,7 +23,8 @@ public class CupsPrinterMgmt implements PrinterMgmt {
 
     @Override
     public void addPrinterImpl(String queue, String port, boolean isDefault) throws IOException, InterruptedException {
-    	if (user == null) user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
+        if (user == null)
+            user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
         File tmpPpd = File.createTempFile("tepid", ".ppd");
         Files.copy(Utils.getResourceAsStream("XeroxWorkCentre7556.ppd"), tmpPpd.toPath(), StandardCopyOption.REPLACE_EXISTING);
         ProcessBuilder pb = new ProcessBuilder("sudo", "lpadmin", "-p", queue + "-" + user, "-E", "-v", "lpd://localhost:8515/" + port, "-P", tmpPpd.getAbsolutePath());

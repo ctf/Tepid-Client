@@ -1,12 +1,12 @@
 package ca.mcgill.science.tepid.client.notifications;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.Shape;
+import ca.mcgill.science.tepid.client.CubicBezier;
+import ca.mcgill.science.tepid.common.Utils;
+import com.io.jimm.StringUtils;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -20,16 +20,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import javax.imageio.ImageIO;
-import javax.swing.JPanel;
-import javax.swing.JWindow;
-import javax.swing.SwingUtilities;
-
-import com.io.jimm.StringUtils;
-
-import ca.mcgill.science.tepid.client.CubicBezier;
-import ca.mcgill.science.tepid.common.Utils;
-
 public class Notification extends JWindow {
     private static final long serialVersionUID = -1841885707134092550L;
     private static final int green = 0x4D983E, yellow = 0xFFB300, red = 0xFF4033;
@@ -41,8 +31,8 @@ public class Notification extends JWindow {
     private BufferedImage icon, oldIcon;
     private Color color = Color.BLACK, oldColor = null;
     private String title, body, oldTo, newFrom;
-	private Thread animationThread;
-	private final BlockingQueue<NotificationEntry> entries = new LinkedBlockingQueue<>();
+    private Thread animationThread;
+    private final BlockingQueue<NotificationEntry> entries = new LinkedBlockingQueue<>();
 
     public Notification() {
         final int w = 360, h = 90, p = 10;
@@ -71,7 +61,8 @@ public class Notification extends JWindow {
                     g.setColor(color);
                 } else {
                     if (y >= getHeight()) g.setColor(color);
-                    else g.setColor(new Color(combineColors(((int) ((1 - (float) y / getHeight()) * 0xff) << 24) | (oldColor.getRGB() & 0xffffff), color.getRGB()), true));
+                    else
+                        g.setColor(new Color(combineColors(((int) ((1 - (float) y / getHeight()) * 0xff) << 24) | (oldColor.getRGB() & 0xffffff), color.getRGB()), true));
                 }
                 g.drawString(title == null ? "" : title, titleX, 24);
                 g.fillRect(0, 0, getHeight(), getHeight());
@@ -104,9 +95,9 @@ public class Notification extends JWindow {
                 } else {
                     AffineTransform transform = g.getTransform();
                     if (oldIcon != null) {
-	                    Rectangle bounds = new Rectangle(0, 0, oldIcon.getWidth(), oldIcon.getHeight());
-	                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -highY + (getHeight() - bounds.height) / 2 - bounds.y);
-	                    g.drawImage(oldIcon, 0, 0, null);
+                        Rectangle bounds = new Rectangle(0, 0, oldIcon.getWidth(), oldIcon.getHeight());
+                        g.translate((getHeight() - bounds.width) / 2 - bounds.x, -highY + (getHeight() - bounds.height) / 2 - bounds.y);
+                        g.drawImage(oldIcon, 0, 0, null);
                     } else if (oldTo != null) {
                         g.setColor(Color.WHITE);
                         g.setFont(fQuota);
@@ -117,9 +108,9 @@ public class Notification extends JWindow {
                     }
                     g.setTransform(transform);
                     if (icon != null) {
-	                    Rectangle bounds = new Rectangle(0, 0, icon.getWidth(), icon.getHeight());
-	                    g.translate((getHeight() - bounds.width) / 2 - bounds.x, -lowY + (getHeight() - bounds.height) / 2 - bounds.y);
-	                    g.drawImage(icon, 0, 0, null);
+                        Rectangle bounds = new Rectangle(0, 0, icon.getWidth(), icon.getHeight());
+                        g.translate((getHeight() - bounds.width) / 2 - bounds.x, -lowY + (getHeight() - bounds.height) / 2 - bounds.y);
+                        g.drawImage(icon, 0, 0, null);
                     } else if (newFrom != null) {
                         g.setColor(Color.WHITE);
                         g.setFont(fQuota);
@@ -129,7 +120,7 @@ public class Notification extends JWindow {
                         g.fill(s);
                     }
                     g.setTransform(transform);
-            	
+
                 }
                 g.drawImage(closeButtonHover ? xButtonHover : xButton, w - xButton.getWidth() - p, p, null);
             }
@@ -198,64 +189,64 @@ public class Notification extends JWindow {
             @Override
             public void run() {
                 try {
-                	NotificationEntry carry = null;
-                	while (!Thread.interrupted()) {
-                		NotificationEntry e;
-                		if (carry != null) {
-                			e = carry;
-                			carry = null;
-                		} else {
-                			e = entries.take();
-                			if (e.quota && !quotaMode && icon != null) {
-                				carry = e;
-                				newFrom = String.valueOf(e.from);
-                				e = new NotificationEntry(getQuotaColor(e.from), null, e.title, e.body);
-                			}
-                		}
-            	        if (title == null) title = e.title;
-            	        if (body == null) body = e.body;
-                		if (e.quota) {
-                			quotaMode = true;
-                			oldIcon = null;
-                			icon = null;
-                			oldTo = String.valueOf(e.to);
-                		} else {
-                	        quotaMode = false;
-                	        oldColor = color == null ? new Color(e.color) : color;
-                	        Notification.this.color = new Color(e.color);
-                	        oldIcon = icon;
-                	        if (e.icon != null) setIcon(e.icon);
-                	        else icon = null;
-                	        if (oldIcon == null && oldTo == null) {
-                	        	oldIcon = icon;
-                	            safeRepaint();
-                	            Thread.sleep((long) ms);
-                	            continue;
-                	        }
-                		}
-	                    double fromY = e.from * height, toY = e.to * height, distY = Math.abs(toY - fromY);
-	                    long start = System.currentTimeMillis();
-	                    for (double t = 0; t <= 1; ) {
-	                        long frameStart = System.currentTimeMillis();
-	                        t = (double) (frameStart - start) / (double) ms;
-	                        double pos = easeInOut.calc(t);
-	                        if (pos >= 0.5 && !title.equals(e.title)) title = e.title;
-	                        if (pos >= 0.5 && !body.equals(e.body)) body = e.body;
-	                        if (toY > fromY) {
-	                            y = pos * distY + fromY;
-	                        } else {
-	                            y = distY - (pos * distY) + toY;
-	                        }
-	                        safeRepaint();
-	                        long sleepTime = frameMs - (System.currentTimeMillis() - frameStart);
-	                        if (sleepTime > 0) Thread.sleep(sleepTime);
-	                    }
-	                    oldIcon = icon;
-	                    if (!e.quota) oldTo = null;
-	                    else newFrom = null;
-	                    safeRepaint();
-	                    Thread.sleep(frameMs * 2);
-                	}
+                    NotificationEntry carry = null;
+                    while (!Thread.interrupted()) {
+                        NotificationEntry e;
+                        if (carry != null) {
+                            e = carry;
+                            carry = null;
+                        } else {
+                            e = entries.take();
+                            if (e.quota && !quotaMode && icon != null) {
+                                carry = e;
+                                newFrom = String.valueOf(e.from);
+                                e = new NotificationEntry(getQuotaColor(e.from), null, e.title, e.body);
+                            }
+                        }
+                        if (title == null) title = e.title;
+                        if (body == null) body = e.body;
+                        if (e.quota) {
+                            quotaMode = true;
+                            oldIcon = null;
+                            icon = null;
+                            oldTo = String.valueOf(e.to);
+                        } else {
+                            quotaMode = false;
+                            oldColor = color == null ? new Color(e.color) : color;
+                            Notification.this.color = new Color(e.color);
+                            oldIcon = icon;
+                            if (e.icon != null) setIcon(e.icon);
+                            else icon = null;
+                            if (oldIcon == null && oldTo == null) {
+                                oldIcon = icon;
+                                safeRepaint();
+                                Thread.sleep((long) ms);
+                                continue;
+                            }
+                        }
+                        double fromY = e.from * height, toY = e.to * height, distY = Math.abs(toY - fromY);
+                        long start = System.currentTimeMillis();
+                        for (double t = 0; t <= 1; ) {
+                            long frameStart = System.currentTimeMillis();
+                            t = (double) (frameStart - start) / (double) ms;
+                            double pos = easeInOut.calc(t);
+                            if (pos >= 0.5 && !title.equals(e.title)) title = e.title;
+                            if (pos >= 0.5 && !body.equals(e.body)) body = e.body;
+                            if (toY > fromY) {
+                                y = pos * distY + fromY;
+                            } else {
+                                y = distY - (pos * distY) + toY;
+                            }
+                            safeRepaint();
+                            long sleepTime = frameMs - (System.currentTimeMillis() - frameStart);
+                            if (sleepTime > 0) Thread.sleep(sleepTime);
+                        }
+                        oldIcon = icon;
+                        if (!e.quota) oldTo = null;
+                        else newFrom = null;
+                        safeRepaint();
+                        Thread.sleep(frameMs * 2);
+                    }
                 } catch (InterruptedException e) {
                 }
             }
@@ -272,11 +263,11 @@ public class Notification extends JWindow {
     }
 
     public void setStatus(int color, String icon, String title, String body) {
-    	this.entries.add(new NotificationEntry(color, icon, title, body));
+        this.entries.add(new NotificationEntry(color, icon, title, body));
     }
 
     public void setQuota(int from, int to, String title, String body) {
-    	this.entries.add(new NotificationEntry(from, to, title, body));
+        this.entries.add(new NotificationEntry(from, to, title, body));
     }
 
     public static BufferedImage loadImage(InputStream input) {
@@ -298,7 +289,7 @@ public class Notification extends JWindow {
     }
 
     private static void repositionActive() {
-    	if (active.isEmpty()) return;
+        if (active.isEmpty()) return;
         Rectangle screenBounds = active.getFirst().getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
         final int p = 20;
         int nY = screenBounds.height - 40 - p;
@@ -308,43 +299,43 @@ public class Notification extends JWindow {
             n.setBounds(b.x, nY, b.width, b.height);
         }
     }
-    
-	private void safeRepaint() {
-		if (SwingUtilities.isEventDispatchThread()) {
-			this.repaint();
-		} else {
-			SwingUtilities.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					Notification.this.repaint();
-				}
-			});
-		}
-	}
-	
-	public static int combineColors(int a, int b) {
-		int aA = (a >> 24) & 0xff,
-		rA = (a >> 16) & 0xff,
-		gA = (a >> 8) & 0xff,
-		bA = a & 0xff,
-		aB = (b >> 24) & 0xff,
-		rB = (b >> 16) & 0xff,
-		gB = (b >> 8) & 0xff,
-		bB = b & 0xff,
-		rOut = (rA * aA / 255) + (rB * aB * (255 - aA) / (255*255)),
-		gOut = (gA * aA / 255) + (gB * aB * (255 - aA) / (255*255)),
-		bOut = (bA * aA / 255) + (bB * aB * (255 - aA) / (255*255)),
-		aOut = aA + (aB * (255 - aA) / 255);
-		return ((aOut&0xff)<<24)|((rOut&0xff)<<16)|((gOut&0xff)<<8)|(bOut&0xff);
-	}
-	
-	public static int getQuotaColor(double q) {
+
+    private void safeRepaint() {
+        if (SwingUtilities.isEventDispatchThread()) {
+            this.repaint();
+        } else {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    Notification.this.repaint();
+                }
+            });
+        }
+    }
+
+    public static int combineColors(int a, int b) {
+        int aA = (a >> 24) & 0xff,
+                rA = (a >> 16) & 0xff,
+                gA = (a >> 8) & 0xff,
+                bA = a & 0xff,
+                aB = (b >> 24) & 0xff,
+                rB = (b >> 16) & 0xff,
+                gB = (b >> 8) & 0xff,
+                bB = b & 0xff,
+                rOut = (rA * aA / 255) + (rB * aB * (255 - aA) / (255 * 255)),
+                gOut = (gA * aA / 255) + (gB * aB * (255 - aA) / (255 * 255)),
+                bOut = (bA * aA / 255) + (bB * aB * (255 - aA) / (255 * 255)),
+                aOut = aA + (aB * (255 - aA) / 255);
+        return ((aOut & 0xff) << 24) | ((rOut & 0xff) << 16) | ((gOut & 0xff) << 8) | (bOut & 0xff);
+    }
+
+    public static int getQuotaColor(double q) {
         float distTo0 = (float) ((Math.max(100 - (q), 50) - 50) / 50),
-        distTo50 = Math.min((float) ((Math.max(150 - (q), 50) - 50) / 50), 1);
+                distTo50 = Math.min((float) ((Math.max(150 - (q), 50) - 50) / 50), 1);
         int green = 0xff000000 | Notification.green,
-        yellow = (((int) (distTo50 * 0xff)) << 24) | Notification.yellow,
-        red = (((int) (distTo0 * 0xff)) << 24) | Notification.red;
+                yellow = (((int) (distTo50 * 0xff)) << 24) | Notification.yellow,
+                red = (((int) (distTo0 * 0xff)) << 24) | Notification.red;
         return combineColors(red, combineColors(yellow, green));
-	}
+    }
 
 }

@@ -199,7 +199,7 @@ public class Main {
                                 e.printStackTrace();
                             }
                         }
-                        auth = "Token " + new String(Base64.encode(token.getBytes()));
+                        auth = "Token " + tokenHeader;
                         putResponse = Api.fetch(iTepid -> iTepid.createNewJob(p));
                         //response = tepidServer.path("jobs").request(MediaType.APPLICATION_JSON).header("Authorization", auth).post(Entity.entity(p, MediaType.APPLICATION_JSON));
                     } catch (PromiseRejectionException e) {

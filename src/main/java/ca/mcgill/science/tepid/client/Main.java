@@ -38,23 +38,14 @@ public class Main {
     /*
      * All urls should go here so we avoid issues!
      */
-    public final static String baseUrl = "http://testpid.science.mcgill.ca";
-    public final static String serverUrl = baseUrl + ":8080/tepid/";
 
-    /*
-     *These are URL's not currently in use.
-     *public final static String baseUrl = "https://tepid.science.mcgill.ca";
-     *public final static String serverUrl = baseUrl + ":8443/tepid";
-     *final static String serverUrl = "http://localhost:8080/tepid";
-     */
-
-
-    final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(serverUrl),
+    //	final static String serverUrl = "http://localhost:8080/tepid";
+    final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(Config.serverUrl),
             tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
                 final OutputStream outputStream = ctx.getOutputStream();
                 ctx.setOutputStream(new XZOutputStream(outputStream, new LZMA2Options()));
                 ctx.proceed();
-            }).build().target(serverUrl);
+            }).build().target(Config.serverUrl);
     public static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
@@ -69,9 +60,10 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
+        Config.setup();
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
-        System.out.println("Server url: " + serverUrl);
+        System.out.println("Server url: " + Config.serverUrl);
         if (args.length > 0) {
             if (args[0].equals("--cleanup")) {
                 manager.cleanPrinters();
@@ -169,7 +161,7 @@ public class Main {
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {
-                    String accountUrl = baseUrl + "/account?token=" + Base64.encodeAsString(token);
+                    String accountUrl = Config.baseUrl + "/account?token=" + Base64.encodeAsString(token);
                     URI uri = new URI(accountUrl);
                     System.out.println(uri);
                     Desktop.getDesktop().browse(uri);

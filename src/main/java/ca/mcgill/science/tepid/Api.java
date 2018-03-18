@@ -2,6 +2,7 @@ package ca.mcgill.science.tepid;
 
 import ca.mcgill.science.tepid.api.ITepid;
 import ca.mcgill.science.tepid.api.TepidApi;
+import ca.mcgill.science.tepid.client.Config;
 import ca.mcgill.science.tepid.client.Main;
 import kotlin.Unit;
 import retrofit2.Call;
@@ -15,7 +16,7 @@ public class Api {
 
     public static ITepid instance() {
         if (instance == null)
-            instance = new TepidApi(Main.serverUrl, true)
+            instance = new TepidApi(Config.serverUrl, true)
                     .create(
                             config -> {
                                 config.setTokenRetriever(() -> Main.token);

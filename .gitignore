@@ -4,8 +4,8 @@
 ## Directory-based project format:
 .idea/
 *.iml
-
-
+*.ipr
+*.iws
 *.pydevproject
 .metadata
 .gradle

@@ -1,8 +1,12 @@
 package ca.mcgill.science.tepid.client;
 
+import ca.mcgill.science.tepid.Api;
+import ca.mcgill.science.tepid.api.ITepid;
+import ca.mcgill.science.tepid.api.ITepidKt;
 import ca.mcgill.science.tepid.client.PasswordDialog.Result;
 import ca.mcgill.science.tepid.common.Utils;
 import ca.mcgill.science.tepid.models.data.PrintQueue;
+import ca.mcgill.science.tepid.models.data.PutResponse;
 import ca.mcgill.science.tepid.models.data.Session;
 import ca.mcgill.science.tepid.models.data.SessionRequest;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,6 +27,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -33,9 +38,17 @@ public class Main {
     /*
      * All urls should go here so we avoid issues!
      */
-    final static String baseUrl = "https://tepid.science.mcgill.ca";
-    final static String serverUrl = baseUrl + ":8443/tepid";
-    //	final static String serverUrl = "http://localhost:8080/tepid";
+    public final static String baseUrl = "http://testpid.science.mcgill.ca";
+    public final static String serverUrl = baseUrl + ":8080/tepid/";
+
+    /*
+     *These are URL's not currently in use.
+     *public final static String baseUrl = "https://tepid.science.mcgill.ca";
+     *public final static String serverUrl = baseUrl + ":8443/tepid";
+     *final static String serverUrl = "http://localhost:8080/tepid";
+     */
+
+
     final static WebTarget tepidServer = ClientBuilder.newBuilder().register(JacksonFeature.class).build().target(serverUrl),
             tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
                 final OutputStream outputStream = ctx.getOutputStream();
@@ -45,6 +58,7 @@ public class Main {
     public static String token = "", tokenUser = "";
     final static Properties persist = new Properties();
     private static final Map<String, String> queueIds = new ConcurrentHashMap<>();
+
 
     static {
         SystemTray.FORCE_GTK2 = true;
@@ -57,6 +71,7 @@ public class Main {
         System.out.println("***************************************\n*        Starting Tepid Client        *\n***************************************");
         final PrinterMgmt manager = PrinterMgmt.getPrinterManagement();
         System.out.println(String.format(Locale.CANADA, "Launching %s", manager.getClass().getSimpleName()));
+        System.out.println("Server url: " + serverUrl);
         if (args.length > 0) {
             if (args[0].equals("--cleanup")) {
                 manager.cleanPrinters();
@@ -69,9 +84,10 @@ public class Main {
         if (systemTray == null) {
             throw new RuntimeException("Unable to load SystemTray!");
         }
+
         try {
             File icon = File.createTempFile("tepid", ".png");
-            icon.delete();
+            icon.delete(); //maybe delete this line? seems weird to be deleting immediately after creation
             if (System.getProperty("os.name").startsWith("Windows")) {
                 Files.copy(Utils.getResourceAsStream("trayicon/16_loading.png"), icon.toPath());
 //				Files.copy(Utils.getResourceAsStream("trayicon/32_loading.png"), icon.toPath());
@@ -108,13 +124,17 @@ public class Main {
         try {
             if (!token.isEmpty()) {
                 String auth = "Token " + new String(Base64.encode(token.getBytes()));
-                quota = tepidServer.path("users").path(tokenUser).path("quota")
-                        .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
+
+                //test this:
+                quota = Api.fetch(iTepid -> iTepid.getQuota(auth));
+                //quota = tepidServer.path("users").path(tokenUser).path("quota")
+                //        .request(MediaType.APPLICATION_JSON).header("Authorization", auth).get(Integer.class);
             }
         } catch (Exception ignored) {
         }
 
-        PrintQueue[] queues = tepidServer.path("queues").request(MediaType.APPLICATION_JSON).get(PrintQueue[].class);
+        List<PrintQueue> queues = Api.fetch(ITepid::getQueues);
+
         String defaultQueue = null;
         for (PrintQueue q : queues) {
             queueIds.put(Utils.newId(), q.getName());
@@ -145,6 +165,7 @@ public class Main {
         }
         if (quota != null) setTrayQuota(quota);
         else systemTray.setStatus("Welcome to CTF");
+        System.out.println("Welcome to CTF");
         systemTray.addMenuEntry("My Account", (systemTray1, menuEntry) -> {
             if (Desktop.isDesktopSupported()) {
                 try {
@@ -163,9 +184,9 @@ public class Main {
             lpd.addJobListener((p, is) -> {
                 p.setQueueName(queueIds.get(p.getQueueName()));
                 System.out.println(p);
-                String auth = "", id = null;
+                String auth = "";
                 boolean canceled = false;
-                Response response = null;
+                PutResponse putResponse = null;
                 do {
                     try {
                         System.out.println("old token: " + token);
@@ -189,8 +210,8 @@ public class Main {
                             }
                         }
                         auth = "Token " + new String(Base64.encode(token.getBytes()));
-                        response = tepidServer.path("jobs").request(MediaType.APPLICATION_JSON).header("Authorization", auth).post(Entity.entity(p, MediaType.APPLICATION_JSON));
-                        id = response.readEntity(ObjectNode.class).get("id").asText();
+                        putResponse = Api.fetch(iTepid -> iTepid.createNewJob(p));
+                        //response = tepidServer.path("jobs").request(MediaType.APPLICATION_JSON).header("Authorization", auth).post(Entity.entity(p, MediaType.APPLICATION_JSON));
                     } catch (PromiseRejectionException e) {
                         canceled = true;
                         break;
@@ -199,10 +220,12 @@ public class Main {
                         e.printStackTrace();
                     }
                 }
-                while (response == null || id == null || response.getStatus() == Response.Status.UNAUTHORIZED.getStatusCode());
+                while (putResponse == null || ! putResponse.getOk());
                 if (!canceled) {
-                    new JobWatcher(id, auth).start();
-                    response = tepidServerXz.path("jobs").path(id).request(MediaType.TEXT_PLAIN).header("Authorization", auth).put(Entity.entity(is, "application/x-xz"));
+                    new JobWatcher(putResponse.getId(), auth).start();
+                    //come back later
+                    Response response = tepidServerXz.path("jobs").path(putResponse.getId())
+                            .request(MediaType.TEXT_PLAIN).header("Authorization", auth).put(Entity.entity(is, "application/x-xz"));
                     System.err.println(response.readEntity(String.class));
                 } else {
                     //make os think you accepted the job
@@ -222,10 +245,10 @@ public class Main {
 
     private static boolean validateToken(String un, String token) {
         try {
-            Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
-            return s.getExpiration() == -1 || s.getExpiration() > System.currentTimeMillis();
-        } catch (Exception e) {
-            System.err.println("Failed to validate token " + e.getMessage());
+            Session s = Api.fetch(iTepid -> iTepid.validateToken(un,token));
+           // Session s = tepidServer.path("sessions").path(un).path(token).request(MediaType.APPLICATION_JSON).get(Session.class);
+            return s != null && s.isValid();
+        } catch (Exception ignored) {
         }
         return false;
     }
@@ -233,7 +256,7 @@ public class Main {
     private static Session getSession(String un, String pw) {
         try {
             SessionRequest sr = new SessionRequest(un, pw, true, true);
-            return tepidServer.path("sessions").request(MediaType.APPLICATION_JSON).post(Entity.entity(sr, MediaType.APPLICATION_JSON)).readEntity(Session.class);
+            return Api.fetch(iTepid -> iTepid.getSession(sr));
         } catch (Exception e) {
             System.out.println("Failed to get session " + e.getMessage());
         }

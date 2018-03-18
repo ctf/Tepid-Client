@@ -109,7 +109,13 @@ task commandLinux(type: Exec) {
     commandLine "java", "-classpath", "./*", "ca.mcgill.science.tepid.client.Main"
 }
 
-jar.baseName = 'tepid'
+jar {
+    baseName = 'tepid'
+    manifest {
+        attributes 'Main-Class': 'ca.mcgill.science.tepid.client.Main'
+        attributes 'Class-Path': './*'
+    }
+}
 
 task tepidWindows(type: GradleBuild) {
     tasks = ['copyBuilder', 'copyLibsLibs', 'jar']

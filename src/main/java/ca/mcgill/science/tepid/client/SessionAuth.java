@@ -6,18 +6,21 @@ package ca.mcgill.science.tepid.client;
 public class SessionAuth {
 
     public final String username, password;
-    public final boolean valid;
-    public static final SessionAuth INVALID = new SessionAuth(null, null);
+    public static final SessionAuth INVALID = new SessionAuth("", "");
 
-    public SessionAuth(String username, String password) {
-        this.valid = username != null && password != null;
-        this.username = valid ? username : null;
-        this.password = valid ? password : null;
+    public SessionAuth create(String username, String password) {
+        if (username == null || password == null)
+            return INVALID;
+        return new SessionAuth(username, password);
+    }
+
+    private SessionAuth(String username, String password) {
+        this.username = username;
+        this.password = password;
     }
 
     @Override
     public int hashCode() {
-        if (!valid) return 13;
         return username.hashCode() * 7 + password.hashCode();
     }
 
@@ -26,12 +29,12 @@ public class SessionAuth {
         if (this == obj) return true;
         if (!(obj instanceof SessionAuth)) return false;
         SessionAuth other = (SessionAuth) obj;
-        if (!valid) return !other.valid;
         return username.equals(other.username) && password.equals(other.password);
     }
 
     @Override
     public String toString() {
-        return super.toString();
+        return String.format("SessionAuth[u=%s, p=%s]",
+                username, Integer.toString(password.hashCode()));
     }
 }

@@ -2,8 +2,24 @@ group 'ca.mcgill.science.ctf.tepid'
 version '1.2.3'
 
 apply plugin: 'java'
+apply plugin: 'kotlin'
 apply plugin: 'idea'
-sourceCompatibility = 1.8
+sourceCompatibility = JVM_TARGET
+targetCompatibility = JVM_TARGET
+
+buildscript {
+    repositories {
+        jcenter()
+        maven { url "https://jitpack.io" }
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$KOTLIN"
+        classpath "ca.mcgill.tepid-commons:gradle-plugin:$TEPID_COMMONS"
+    }
+}
+
+apply plugin: 'ca.mcgill.science.tepid.commons'
 
 repositories {
     mavenCentral()
@@ -14,8 +30,14 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    
+
     compile 'com.github.cpicon92:Q:ccb4d8fb9d'
+
+    compile tepidDependency.kotlin
+    compile tepidDependency.rxJava
+    compile tepidDependency.rxKotlin
+
+//    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$KOTLIN"
 
     compile "ca.mcgill.tepid-commons:retrofit:$TEPID_COMMONS"
     compile "ca.mcgill.tepid-commons:models:$TEPID_COMMONS"
@@ -119,6 +141,13 @@ jar {
     }
 }
 
+compileKotlin {
+    kotlinOptions.jvmTarget = JVM_TARGET
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = JVM_TARGET
+}
+
 task tepidWindows(type: GradleBuild) {
     tasks = ['copyBuilder', 'copyLibsLibs', 'jar']
 }
@@ -128,9 +157,9 @@ task tepidLinux(type: GradleBuild) {
 }
 
 task msi(type: Exec) {
-	dependsOn "tepidWindows"
+    dependsOn "tepidWindows"
     workingDir "$buildDir/libs"
     environment "PRODUCTVERSION", version
-    commandLine "cmd","/c","wix.bat"
+    commandLine "cmd", "/c", "wix.bat"
     group 'build'
 }

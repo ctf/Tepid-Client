@@ -1,7 +1,6 @@
 package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.utils.PropUtils;
-import okhttp3.WebSocket;
 
 import java.util.Properties;
 

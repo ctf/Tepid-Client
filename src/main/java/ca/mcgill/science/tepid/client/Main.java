@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Main {
 
 
-    private final static WebTarget tepidServerXz = ClientBuilder.newBuilder().register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
+    private final static WebTarget tepidServerXz = ClientBuilder.newBuilder()
+            .register(JacksonFeature.class).register((WriterInterceptor) ctx -> {
         final OutputStream outputStream = ctx.getOutputStream();
         ctx.setOutputStream(new XZOutputStream(outputStream, new LZMA2Options()));
         ctx.proceed();
@@ -215,7 +216,8 @@ public class Main {
                     new JobWatcher(putResponse.getId(), auth).start();
                     //come back later
                     Response response = tepidServerXz.path("jobs").path(putResponse.getId())
-                            .request(MediaType.TEXT_PLAIN).header("Authorization", auth).put(Entity.entity(is, "application/x-xz"));
+                            .request(MediaType.TEXT_PLAIN).header("Authorization", auth)
+                            .put(Entity.entity(is, "application/x-xz"));
                     System.err.println(response.readEntity(String.class));
                 } else {
                     //make os think you accepted the job

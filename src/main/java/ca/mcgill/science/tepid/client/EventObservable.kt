@@ -1,9 +1,16 @@
-package ca.mcgill.science.tepid.client;
+package ca.mcgill.science.tepid.client
 
 /**
  * Main handler for all event related interactions
  */
-public interface EventObservable {
+interface EventObservable {
+
+    fun notify(action: (obs: EventObserver) -> Unit)
+
+    /**
+     * @return [true] if client is currently running on windows, [false] otherwise.
+     */
+    val isWindows: Boolean
 
     /**
      * Attempts to add an observer.
@@ -11,24 +18,19 @@ public interface EventObservable {
      * until one of them succeeds. At most one observer will be added from this call.
      *
      * @param observer to add
-     * @return {@link true} if any observer was added successfully, {@link false} otherwise.
+     * @return [true] if any observer was added successfully, [false] otherwise.
      * Failure to add may result from all provided observers failing to bind,
      * or some other unforeseen exception
      */
-    boolean addObserver(EventObserver... observer);
+    fun addObserver(vararg observer: EventObserver): Boolean
 
     /**
      * Attempts to add all observers provided.
      * Binding for each observer will be done concurrently, but end result will be synchronous
      *
      * @param observers to add
-     * @return {@link true} if every observer was added successfully, {@link false} otherwise
+     * @return [true] if every observer was added successfully, [false] otherwise
      */
-    boolean addObservers(EventObserver... observers);
-
-    /**
-     * @return {@link true} if client is currently running on windows, {@link false} otherwise.
-     */
-    boolean isWindows();
+    fun addObservers(vararg observers: EventObserver): Boolean
 
 }

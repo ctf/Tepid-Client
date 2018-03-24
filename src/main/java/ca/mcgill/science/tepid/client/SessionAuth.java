@@ -8,7 +8,7 @@ public class SessionAuth {
     public final String username, password;
     public static final SessionAuth INVALID = new SessionAuth("", "");
 
-    public SessionAuth create(String username, String password) {
+    public static SessionAuth create(String username, String password) {
         if (username == null || password == null)
             return INVALID;
         return new SessionAuth(username, password);

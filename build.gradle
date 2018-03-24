@@ -37,6 +37,9 @@ dependencies {
     compile tepidDependency.rxJava
     compile tepidDependency.rxKotlin
 
+    testCompile tepidDependency.junit
+    testCompile tepidDependency.kotlinTest
+
 //    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$KOTLIN"
 
     compile "ca.mcgill.tepid-commons:retrofit:$TEPID_COMMONS"

@@ -41,7 +41,8 @@ public class JobWatcher extends Thread {
         n.setVisible(true);
         while (!Thread.currentThread().isInterrupted()) {
             // todo get job changes since last event, not since "now"
-            JsonNode change = Api.fetch(iTepid -> iTepid.getJobChanges(id));
+            JsonNode change = null;
+//            JsonNode change = Api.fetch(iTepid -> iTepid.getJobChanges(id));
             System.out.println(change);
             if (change != null && change.get("results").has(0)) {
                 j = Api.fetch(iTepid -> iTepid.getJob(id));

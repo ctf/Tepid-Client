@@ -103,7 +103,8 @@ public class Utils {
     public static boolean wildcardMatch(String pattern, String input) {
         String[] or = pattern.split("(;|\\|)");
         for (String pat : or) {
-            String regex = ("\\Q" + pat.replace("*", "\\E.*?\\Q") + "\\E").replace("\\Q\\E", "");
+            String regex = ("\\Q" + pat.replace("*", "\\E.*?\\Q") + "\\E")
+                    .replace("\\Q\\E", "");
             if (input.matches(regex)) return true;
         }
         return false;

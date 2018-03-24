@@ -1,25 +1,28 @@
-package ca.mcgill.science.tepid.clientkt.util
+package ca.mcgill.science.tepid.clientkt
 
 import ca.mcgill.science.tepid.models.data.Session
-import java.io.File
-import java.io.FileInputStream
+import ca.mcgill.science.tepid.utils.PropUtils
 import java.util.*
 
-object Token {
+object Auth {
 
     val token: String
-        get() = "$tokenUser:$tokenId"
+        get() = "${tokenUser}:${tokenId}"
 
     val tokenHeader: String
         get() = Session.encodeToHeader(tokenUser, tokenId)
 
+    val user: String
+        get() = tokenUser ?: ""
+
+    val hasToken: Boolean
+        get() = tokenUser != null && tokenId != null
+
     private var tokenUser: String? = null
     private var tokenId: String? = null
-    private val props = Properties()
+    private val props: Properties = PropUtils.loadProps(Config.PROP_PATH) ?: Properties()
 
     init {
-        val tepidFile = File(if (Config.IS_WINDOWS) "" else "")
-        props.load(FileInputStream(tepidFile))
         val token = props.getProperty("token").split(":")
         if (token.size == 2) {
             tokenUser = token[0]
@@ -27,7 +30,7 @@ object Token {
         }
     }
 
-    fun set(user: String, id: String): Token {
+    fun set(user: String?, id: String?): Auth {
         tokenUser = user
         tokenId = id
         return this
@@ -35,6 +38,7 @@ object Token {
 
     fun save() {
         props.setProperty("token", token)
+        PropUtils.saveProps(props, Config.PROP_PATH, "Tepid")
     }
 
     fun clear() {

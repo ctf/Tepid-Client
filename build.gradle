@@ -39,6 +39,7 @@ dependencies {
 
     testCompile tepidDependency.junit
     testCompile tepidDependency.kotlinTest
+    testCompile "ca.mcgill.tepid-commons:test:$TEPID_COMMONS"
 
 //    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$KOTLIN"
 

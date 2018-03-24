@@ -3,6 +3,7 @@ package ca.mcgill.science.tepid.clientkt
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
+import ca.mcgill.science.tepid.api.getJobChanges
 import ca.mcgill.science.tepid.client.Event
 import ca.mcgill.science.tepid.client.EventObservable
 import ca.mcgill.science.tepid.client.Fail
@@ -116,7 +117,7 @@ object ClientUtils : WithLogging() {
     }
 
     private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable) {
-        var processing = true
+        log.info("JobWatcher $jobId")
         fun isInterrupted() = Thread.currentThread().isInterrupted
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
@@ -125,15 +126,25 @@ object ClientUtils : WithLogging() {
             return
         }
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
+        var processing = true
         for (attempt in 1..5) {
-            if (isInterrupted()) return
-            api.getJobChanges(jobId, "longpoll", origJob._id ?: "now").executeDirect()
+            if (isInterrupted()) {
+                log.debug("Watcher interrupted")
+                return
+            }
+            try {
+                api.getJobChanges(jobId).executeDirect()
+            } catch (e: Exception) {
+                if (attempt == 1)
+                    log.error("Malformed job change", e)
+            }
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify { it.onErrorReceived("Job could not be located") }
                 return
             }
+            log.info("Job $job")
             if (job.failed != -1L) {
                 val fail = when (job.error?.toLowerCase()) {
                     "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
@@ -141,6 +152,7 @@ object ClientUtils : WithLogging() {
                     else -> Fail.GENERIC
                 }
                 emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+                log.info("Job failed")
                 return
             }
             if (processing) {
@@ -157,8 +169,10 @@ object ClientUtils : WithLogging() {
                     val oldQuota = quota + job.colorPages * 2 + job.pages
                     emitter.notify { it.onQuotaChanged(quota, oldQuota) }
                 }
+                log.info("Job succeeded")
                 return
             }
         }
+        log.info("Finished listening with longpoll")
     }
 }

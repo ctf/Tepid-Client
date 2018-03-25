@@ -105,10 +105,10 @@ object ClientUtils : WithLogging() {
             return null
         }
 
-        val id = putJob.id
-        val watcherThread = Thread(Runnable { watchJob(id, user, api, emitter) }, "Job watcher for $id")
+        val jobId = putJob.id
+        val watcherThread = Thread(Runnable { watchJob(jobId, user, api, emitter) }, "JobWatcher $jobId")
         watcherThread.start()
-        val response = tepidServerXz.path("jobs").path(putJob.id)
+        val response = tepidServerXz.path("jobs").path(jobId)
                 .request(MediaType.TEXT_PLAIN)
                 .header("Authorization", "Token ${session.authHeader}")
                 .put(Entity.entity(stream, "application/x-xz"))
@@ -117,7 +117,7 @@ object ClientUtils : WithLogging() {
     }
 
     private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable) {
-        log.info("JobWatcher $jobId")
+        log.info("Starting job watcher")
         fun isInterrupted() = Thread.currentThread().isInterrupted
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {

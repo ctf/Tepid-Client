@@ -7,6 +7,7 @@ import com.jacob.com.EnumVariant;
 import com.jacob.com.Variant;
 
 import javax.swing.*;
+import java.io.File;
 import java.io.IOException;
 
 public class WindowsPrinterMgmt implements PrinterMgmt {
@@ -15,6 +16,15 @@ public class WindowsPrinterMgmt implements PrinterMgmt {
 
     static {
         System.out.println("Getting ActiveXComponent");
+        int bit = Integer.parseInt(System.getProperty("sun.arch.data.model"));
+        System.out.println(String.format("%d bit system", bit));
+        String filePath = new File("files/libs").getAbsolutePath();
+        switch (bit) {
+            case 32: System.load(filePath + "/jacob-1.18-M2-x86.dll");
+                break;
+            case 64: System.load(filePath + "/jacob-1.18-M2-x64.dll");
+                break;
+        }
     }
 
     private static ActiveXComponent wmi = new ActiveXComponent("winmgmts:\\\\localhost\\root\\CIMV2");

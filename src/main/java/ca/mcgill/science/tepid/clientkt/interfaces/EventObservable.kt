@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client
+package ca.mcgill.science.tepid.clientkt.interfaces
 
 /**
  * Main handler for all event related interactions

@@ -1,11 +1,9 @@
-package ca.mcgill.science.tepid.clientkt
+package ca.mcgill.science.tepid.clientkt.utils
 
 import ca.mcgill.science.tepid.models.bindings.TEPID_URL_PRODUCTION
-import ca.mcgill.science.tepid.models.bindings.TEPID_URL_TEST
 import ca.mcgill.science.tepid.models.bindings.tepidUrl
 import ca.mcgill.science.tepid.utils.PropUtils
 import ca.mcgill.science.tepid.utils.WithLogging
-import java.io.File
 import java.util.*
 
 
@@ -22,6 +20,7 @@ object Config : WithLogging() {
     val DEBUG: Boolean
     val IS_WINDOWS = System.getProperty("os.name").startsWith("Windows")
     val PROP_PATH: String
+    val USER_NAME: String
 
     init {
         log.info("**********************************")
@@ -34,9 +33,19 @@ object Config : WithLogging() {
 
         SERVER_URL = tepidUrl(get("URL"))
         DEBUG = SERVER_URL == TEPID_URL_PRODUCTION
-        val propDir = if (IS_WINDOWS) System.getenv("appdata") else System.getProperty("user.home")
+
+        val propDir = if (IS_WINDOWS) System.getenv("appdata")
+        else System.getProperty("user.home")
+
         PROP_PATH = "$propDir/.tepid"
         log.info("Server url $SERVER_URL")
+
+        USER_NAME = when {
+            Auth.hasToken -> Auth.user
+            IS_WINDOWS -> System.getProperty("user.name")
+            else -> System.getProperty("user.name")
+            // todo check
+        }
     }
 
 }

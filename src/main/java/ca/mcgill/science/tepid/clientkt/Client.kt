@@ -4,27 +4,30 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.fetch
-import ca.mcgill.science.tepid.client.*
+import ca.mcgill.science.tepid.clientkt.printers.CupsPrinterMgmt
+import ca.mcgill.science.tepid.client.LPDServer
+import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
+import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
+import ca.mcgill.science.tepid.clientkt.interfaces.EventObserver
+import ca.mcgill.science.tepid.clientkt.utils.Auth
+import ca.mcgill.science.tepid.clientkt.utils.ClientUtils
+import ca.mcgill.science.tepid.clientkt.utils.Config
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.models.data.SessionRequest
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.IOException
 
-fun main(vararg args: String) {
-    Client(ConsoleObserver())
-}
-
-class Client(vararg observers: EventObserver) : EventObservable {
+class Client private constructor(observers: Array<out EventObserver>) : EventObservable {
 
     private val observers = mutableListOf<EventObserver>()
 
-    val API: ITepid by lazy {
+    private val api: ITepid by lazy {
         TepidApi(Config.SERVER_URL, Config.DEBUG).create {
             tokenRetriever = Auth::tokenHeader
         }
     }
 
-    val API_NO_AUTH: ITepid by lazy {
+    private val apiNoAuth: ITepid by lazy {
         TepidApi(Config.SERVER_URL, Config.DEBUG).create()
     }
 
@@ -32,23 +35,25 @@ class Client(vararg observers: EventObserver) : EventObservable {
         create(observers)
     }
 
-    fun create(observers: Array<out EventObserver>) {
+    private fun fail(message: String): Nothing {
+        throw ClientException(message)
+    }
+
+    class ClientException(message: String) : RuntimeException(message)
+
+    private fun create(observers: Array<out EventObserver>) {
         log.info("******************************")
         log.info("    Starting Tepid Client     ")
         log.info("******************************")
 
         addObservers(*observers)
 
-        val queues = API_NO_AUTH.getQueues().executeDirect()
-        if (queues == null) {
-            log.error("Could not get queue data")
-            return
-        }
+        val queues = apiNoAuth.getQueues().executeDirect() ?: fail("Could not get queue data")
 
         val manager = if (Config.IS_WINDOWS) WindowsPrinterMgmt() else CupsPrinterMgmt()
 
         if (Auth.hasToken) {
-            API.getQuota(Auth.user).fetch { data, _ ->
+            api.getQuota(Auth.user).fetch { data, _ ->
                 data ?: return@fetch
                 notify { it.onQuotaChanged(data, -1) }
             }
@@ -86,6 +91,7 @@ class Client(vararg observers: EventObserver) : EventObservable {
             }
         } catch (e: IOException) {
             log.error("Failed to bind LPDServer", e)
+            fail("Failed to bind LDPServer")
         }
     }
 
@@ -95,7 +101,7 @@ class Client(vararg observers: EventObserver) : EventObservable {
 
     private fun getValidSession(): Session? {
         if (Auth.hasToken) {
-            val session = API.validateToken(Auth.user, Auth.token).executeDirect()
+            val session = api.validateToken(Auth.user, Auth.token).executeDirect()
             if (session?.isValid() == true)
                 return session
             log.warn("Could not validate old token")
@@ -105,7 +111,7 @@ class Client(vararg observers: EventObserver) : EventObservable {
             for (count in 1..20) {
                 val auth = obs.onSessionRequest(count) ?: break
                 val request = SessionRequest(auth.username, auth.password, true, true)
-                val session = API.getSession(request).executeDirect()
+                val session = api.getSession(request).executeDirect()
                 if (session != null) {
                     Auth.set(session.user.shortUser, session.user._id).save()
                     return session
@@ -134,5 +140,13 @@ class Client(vararg observers: EventObserver) : EventObservable {
     override val isWindows: Boolean
         get() = Config.IS_WINDOWS
 
-    private companion object : WithLogging()
+    companion object : WithLogging() {
+        fun create(vararg observers: EventObserver): Client? =
+                try {
+                    Client(observers)
+                } catch (e: ClientException) {
+                    log.error("Failed to create client", e)
+                    null
+                }
+    }
 }

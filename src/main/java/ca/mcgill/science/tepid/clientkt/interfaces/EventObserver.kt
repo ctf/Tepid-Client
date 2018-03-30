@@ -1,5 +1,8 @@
-package ca.mcgill.science.tepid.client
+package ca.mcgill.science.tepid.clientkt.interfaces
 
+import ca.mcgill.science.tepid.client.SessionAuth
+import ca.mcgill.science.tepid.clientkt.Event
+import ca.mcgill.science.tepid.clientkt.Fail
 import ca.mcgill.science.tepid.models.data.PrintJob
 
 /**

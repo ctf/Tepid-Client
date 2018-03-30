@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client
+package ca.mcgill.science.tepid.clientkt
 
 enum class Event {
     CREATED, PROCESSING, SENDING, COMPLETED, FAILED

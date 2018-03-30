@@ -1,6 +1,6 @@
 package ca.mcgill.science.tepid.client.notifications;
 
-import ca.mcgill.science.tepid.client.CubicBezier;
+import ca.mcgill.science.tepid.clientkt.ui.notification.CubicBezier;
 import ca.mcgill.science.tepid.common.Utils;
 import com.io.jimm.StringUtils;
 

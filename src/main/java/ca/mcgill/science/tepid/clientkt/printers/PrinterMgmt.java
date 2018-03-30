@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client;
+package ca.mcgill.science.tepid.clientkt.printers;
 
 import java.io.IOException;
 import java.util.Map;
@@ -39,7 +39,7 @@ public interface PrinterMgmt {
     }
 
     /**
-     * Called when {@link Main} first starts.
+     * Called when client first starts.
      * Should add printers and remove them upon shutdown
      *
      * @param queueIds     map of ids

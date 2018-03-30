@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.clientkt
+package ca.mcgill.science.tepid.clientkt.utils
 
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.PropUtils
@@ -7,7 +7,7 @@ import java.util.*
 object Auth {
 
     val token: String
-        get() = "${tokenUser}:${tokenId}"
+        get() = "$tokenUser:$tokenId"
 
     val tokenHeader: String
         get() = Session.encodeToHeader(tokenUser, tokenId)
@@ -16,7 +16,7 @@ object Auth {
         get() = tokenUser ?: ""
 
     val hasToken: Boolean
-        get() = tokenUser != null && tokenId != null
+        get() = tokenUser?.isNotBlank() == true && tokenId?.isNotBlank() == true
 
     private var tokenUser: String? = null
     private var tokenId: String? = null

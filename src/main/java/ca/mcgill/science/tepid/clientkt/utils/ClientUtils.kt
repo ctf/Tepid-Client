@@ -1,12 +1,12 @@
-package ca.mcgill.science.tepid.clientkt
+package ca.mcgill.science.tepid.clientkt.utils
 
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.getJobChanges
-import ca.mcgill.science.tepid.client.Event
-import ca.mcgill.science.tepid.client.EventObservable
-import ca.mcgill.science.tepid.client.Fail
+import ca.mcgill.science.tepid.clientkt.Event
+import ca.mcgill.science.tepid.clientkt.Fail
+import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
@@ -23,6 +23,7 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.ext.WriterInterceptor
 
 object ClientUtils : WithLogging() {
+
     fun newId() = UUID.randomUUID().toString().replace("-", "")
 
     val hostname: String? by lazy {

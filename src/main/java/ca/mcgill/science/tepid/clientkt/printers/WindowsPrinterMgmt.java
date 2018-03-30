@@ -1,5 +1,6 @@
-package ca.mcgill.science.tepid.client;
+package ca.mcgill.science.tepid.clientkt.printers;
 
+import ca.mcgill.science.tepid.clientkt.utils.Config;
 import com.jacob.activeX.ActiveXComponent;
 import com.jacob.com.ComFailException;
 import com.jacob.com.Dispatch;
@@ -7,22 +8,22 @@ import com.jacob.com.EnumVariant;
 import com.jacob.com.Variant;
 
 import javax.swing.*;
-import java.io.File;
 import java.io.IOException;
 
 public class WindowsPrinterMgmt implements PrinterMgmt {
 
-    private String user = null;
+    private String user = Config.INSTANCE.getUSER_NAME();
 
     static {
         System.out.println("Getting ActiveXComponent");
         int bit = Integer.parseInt(System.getProperty("sun.arch.data.model"));
         System.out.println(String.format("%d bit system", bit));
-        String filePath = new File("files/libs").getAbsolutePath();
         switch (bit) {
-            case 32: System.load(filePath + "/jacob-1.18-M2-x86.dll");
+            case 32:
+                System.load("jacob-1.18-M2-x86.dll");
                 break;
-            case 64: System.load(filePath + "/jacob-1.18-M2-x64.dll");
+            case 64:
+                System.load("jacob-1.18-M2-x64.dll");
                 break;
         }
     }
@@ -50,8 +51,6 @@ public class WindowsPrinterMgmt implements PrinterMgmt {
     }
 
     public void addPrinterImpl(String queue, String id, boolean isDefault) throws IOException, InterruptedException {
-        if (user == null)
-            user = Main.tokenUser == null || Main.tokenUser.isEmpty() ? System.getProperty("user.name") : Main.tokenUser;
         queue = queue + "-" + user;
         wmi.getPropertyAsComponent("Security_").getPropertyAsComponent("Privileges").invoke("AddAsString", new Variant("SeLoadDriverPrivilege"), new Variant(true));
         Dispatch win32TcpIpPrinterPort = wmi.invoke("Get", "Win32_TCPIPPrinterPort").toDispatch();

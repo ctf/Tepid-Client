@@ -1,6 +1,10 @@
-package ca.mcgill.science.tepid.clientkt
+package ca.mcgill.science.tepid.clientkt.ui.console
 
 import ca.mcgill.science.tepid.client.*
+import ca.mcgill.science.tepid.clientkt.Event
+import ca.mcgill.science.tepid.clientkt.Fail
+import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
+import ca.mcgill.science.tepid.clientkt.interfaces.EventObserver
 import ca.mcgill.science.tepid.models.data.PrintJob
 import java.util.*
 

@@ -1,10 +1,10 @@
 package dorkbox.systemTray.windows;
 
-import java.io.InputStream;
-import java.net.URL;
-
 import dorkbox.systemTray.MenuEntry;
 import dorkbox.systemTray.SystemTrayMenuAction;
+
+import java.io.InputStream;
+import java.net.URL;
 
 public class Win32MenuEntry implements MenuEntry {
 

@@ -1,6 +1,5 @@
-package ca.mcgill.science.tepid.client
+package ca.mcgill.science.tepid.client.models
 
-import ca.mcgill.science.tepid.client.models.CurrentUser
 import org.junit.Test
 import kotlin.test.assertNotNull
 

@@ -4,9 +4,9 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.fetch
-import ca.mcgill.science.tepid.client.lpd.LPDServer
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
+import ca.mcgill.science.tepid.client.lpd.LPDServer
 import ca.mcgill.science.tepid.client.printers.PrinterMgmt
 import ca.mcgill.science.tepid.client.utils.Auth
 import ca.mcgill.science.tepid.client.utils.ClientUtils

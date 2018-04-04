@@ -44,7 +44,7 @@ object Config : WithLogging() {
             Auth.hasToken -> Auth.user
             IS_WINDOWS -> System.getProperty("user.name")
             else -> System.getProperty("user.name")
-            // todo check
+        // todo check
         }
     }
 

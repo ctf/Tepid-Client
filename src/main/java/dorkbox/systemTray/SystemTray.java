@@ -15,24 +15,6 @@
  */
 package dorkbox.systemTray;
 
-import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Iterator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import dorkbox.systemTray.linux.AppIndicatorTray;
 import dorkbox.systemTray.linux.GnomeShellExtension;
 import dorkbox.systemTray.linux.GtkSystemTray;
@@ -43,6 +25,16 @@ import dorkbox.systemTray.windows.Win32SystemTray;
 import dorkbox.util.OS;
 import dorkbox.util.Property;
 import dorkbox.util.process.ShellProcessBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.awt.*;
+import java.io.*;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 
 /**

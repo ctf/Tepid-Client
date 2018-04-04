@@ -1,9 +1,9 @@
 package ca.mcgill.science.tepid.client
 
+import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.internal.TestEventObservable
 import ca.mcgill.science.tepid.client.internal.TestUtils
 import ca.mcgill.science.tepid.client.utils.ClientUtils
-import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.enums.Room
 import ca.mcgill.science.tepid.utils.WithLogging
@@ -15,7 +15,7 @@ import kotlin.test.fail
 
 class JobTest {
 
-    companion object :WithLogging(){
+    companion object : WithLogging() {
         init {
             Assume.assumeTrue("Testing job test", TestUtils.hasTestUser && TestUtils.testFile != null)
         }

@@ -23,8 +23,8 @@ object Auth {
     private val props: Properties = PropUtils.loadProps(Config.PROP_PATH) ?: Properties()
 
     init {
-        val token = props.getProperty("token").split(":")
-        if (token.size == 2) {
+        val token = props.getProperty("token")?.split(":")
+        if (token?.size == 2) {
             tokenUser = token[0]
             tokenId = token[1]
         }

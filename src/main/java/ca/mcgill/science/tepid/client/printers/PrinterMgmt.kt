@@ -9,6 +9,8 @@ import java.io.IOException
  */
 interface PrinterMgmt {
 
+    private fun fullQueueName(queue: String): String = "$queue-${Config.USER_NAME}"
+
     /**
      * Adds a printer of the given data
      *
@@ -17,8 +19,8 @@ interface PrinterMgmt {
      * @param isDefault true if name matches default
      */
     fun addPrinter(queue: String, id: String, isDefault: Boolean) {
-        val fullQueue = "$queue-${Config.USER_NAME}, id $id"
-        log.info("Adding printer $fullQueue")
+        val fullQueue = fullQueueName(queue)
+        log.info("Adding printer $fullQueue, id $id")
         try {
             addPrinterImpl(fullQueue, id, isDefault)
         } catch (e: IOException) {
@@ -33,7 +35,7 @@ interface PrinterMgmt {
      * @param id  id
      */
     fun deletePrinter(queue: String, id: String) {
-        val fullQueue = "$queue-${Config.USER_NAME}"
+        val fullQueue = fullQueueName(queue)
         log.info("Deleting printer $fullQueue, id $id")
         try {
             deletePrinterImpl(fullQueue, id)

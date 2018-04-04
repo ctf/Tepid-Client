@@ -4,6 +4,7 @@ import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
 import ca.mcgill.science.tepid.client.ui.observers.ConsoleObserver
 import ca.mcgill.science.tepid.client.utils.Config
+import kotlin.system.exitProcess
 
 class TestEventObservable : EventObservable {
 
@@ -25,4 +26,8 @@ class TestEventObservable : EventObservable {
     }
 
     override fun getObserverNames(): List<String> = listOf(observer.name)
+
+    override fun terminate(): Nothing {
+        exitProcess(0)
+    }
 }

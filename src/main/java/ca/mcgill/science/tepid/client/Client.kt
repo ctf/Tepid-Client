@@ -103,6 +103,11 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         }
     }
 
+    override fun terminate(): Nothing {
+        observers.forEach(EventObserver::unbind)
+        exitProcess(0)
+    }
+
     override fun notify(action: (obs: EventObserver) -> Unit) {
         observers.forEach { action(it) }
     }

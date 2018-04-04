@@ -31,8 +31,9 @@ object Config : WithLogging() {
         fun get(key: String, default: String?) = props.getProperty(key, default)
         fun get(key: String) = get(key, "")
 
-        SERVER_URL = tepidUrl(get("URL"))
-        DEBUG = SERVER_URL == TEPID_URL_PRODUCTION
+//        SERVER_URL = tepidUrl(get("URL"))
+        SERVER_URL = TEPID_URL_PRODUCTION
+        DEBUG = SERVER_URL != TEPID_URL_PRODUCTION
 
         val propDir = if (IS_WINDOWS) System.getenv("appdata")
         else System.getProperty("user.home")

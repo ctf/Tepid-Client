@@ -11,8 +11,6 @@ class CupsPrinterMgmt : PrinterMgmt {
 
     private companion object : WithLogging()
 
-    private val user = Config.USER_NAME
-
     override fun preBind(): Boolean = true // Purposely blank
 
     override fun tepidDataPath(): String = System.getProperty("user.home") + "/.tepid"
@@ -20,8 +18,10 @@ class CupsPrinterMgmt : PrinterMgmt {
     override fun addPrinterImpl(queue: String, id: String, isDefault: Boolean) {
         val tmpPpd = File.createTempFile("tepid", ".ppd")
         try {
-            Files.copy(Utils.getResourceAsStream("XeroxWorkCentre7556.ppd"), tmpPpd.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            val pb = ProcessBuilder("sudo", "lpadmin", "-p", queue + "-" + user, "-E", "-v", "lpd://localhost:8515/" + id, "-P", tmpPpd.absolutePath)
+            Files.copy(Utils.getResourceAsStream("XeroxWorkCentre7556.ppd"),
+                    tmpPpd.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            val pb = ProcessBuilder("sudo", "lpadmin", "-p",
+                    queue, "-E", "-v", "lpd://localhost:8515/$id", "-P", tmpPpd.absolutePath)
             pb.inheritIO()
             val p = pb.start()
             p.waitFor()
@@ -31,7 +31,7 @@ class CupsPrinterMgmt : PrinterMgmt {
     }
 
     override fun deletePrinterImpl(queue: String, id: String) {
-        val pb = ProcessBuilder("sudo", "lpadmin", "-x", queue + "-" + user)
+        val pb = ProcessBuilder("sudo", "lpadmin", "-x", queue)
         pb.inheritIO()
         val p = pb.start()
         p.waitFor()

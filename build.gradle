@@ -45,26 +45,8 @@ dependencies {
     compile "ca.mcgill.tepid-commons:models:$TEPID_COMMONS"
     compile "ca.mcgill.tepid-commons:utils:$TEPID_COMMONS"
 
-    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray-Dorkbox-Util
-    compile group: 'com.dorkbox', name: 'SystemTray-Dorkbox-Util', version: '2.20'
-
-    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray TODO update
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
     compile group: 'com.dorkbox', name: 'SystemTray', version: '3.12'
-
-    // https://mvnrepository.com/artifact/net.java.dev.jna/jna
-//    compile group: 'net.java.dev.jna', name: 'jna', version: '4.4.0'
-
-    // https://mvnrepository.com/artifact/net.java.dev.jna/jna-platform
-//    compile group: 'net.java.dev.jna', name: 'jna-platform', version: '4.4.0'
-
-    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-//    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
-
-    // https://mvnrepository.com/artifact/org.glassfish.jersey.core/jersey-common
-//    compile group: 'org.glassfish.jersey.core', name: 'jersey-common', version: '2.25'
-
-    // https://mvnrepository.com/artifact/org.glassfish.jersey.containers/jersey-container-servlet
-//    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-servlet', version: '2.25'
 
     // https://mvnrepository.com/artifact/org.apache.commons/commons-email
     compile group: 'org.apache.commons', name: 'commons-email', version: '1.4'
@@ -72,9 +54,6 @@ dependencies {
 //    // https://mvnrepository.com/artifact/org.tukaani/xz
     compile group: 'org.tukaani', name: 'xz', version: '1.8'
 
-//    // https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api
-//    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1'
-//
 //    // https://mvnrepository.com/artifact/org.glassfish.jersey.media/jersey-media-json-jackson
     compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.22.1'
 

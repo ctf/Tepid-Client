@@ -38,4 +38,9 @@ interface EventObservable {
      */
     fun getObserverNames(): List<String>
 
+    /**
+     * Called to end the entire observable
+     */
+    fun terminate(): Nothing
+
 }

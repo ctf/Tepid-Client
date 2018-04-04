@@ -37,8 +37,9 @@ interface PrinterMgmt {
         log.info("Deleting printer $fullQueue, id $id")
         try {
             deletePrinterImpl(fullQueue, id)
-        } catch (e: IOException) {
-            log.error("Delete printer error", e)
+        } catch (e: Exception) {
+            if (e !is NoSuchElementException)
+                log.error("Delete printer error", e)
         }
     }
 
@@ -50,10 +51,16 @@ interface PrinterMgmt {
      * @param defaultQueue default queue id
      */
     fun bind(queueIds: Map<String, String>, defaultQueue: String?) {
-        if (!preBind()) {
-            log.error("Failed to preBind printer management")
+        try {
+            if (!preBind()) {
+                log.error("Failed to preBind printer management")
+                return
+            }
+        } catch (e: Exception) {
+            log.error("Failed to bind", e)
             return
         }
+        log.info("Finished prebind")
         // delete all printers on shutdown
         Runtime.getRuntime().addShutdownHook(Thread({
             log.info("Unmounting ${queueIds.size} printers")

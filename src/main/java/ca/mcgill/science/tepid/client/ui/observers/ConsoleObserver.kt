@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client.ui.console
+package ca.mcgill.science.tepid.client.ui.observers
 
 import ca.mcgill.science.tepid.client.Event
 import ca.mcgill.science.tepid.client.Fail
@@ -10,9 +10,13 @@ import java.util.*
 
 class ConsoleObserver(private val handleLogin: Boolean = false) : EventObserver {
 
+    override val name: String = "Console"
+
     override fun bind(observable: EventObservable): Boolean {
         return true
     }
+
+    override fun unbind() = Unit
 
     override fun onSessionRequest(attemptCount: Int): SessionAuth? {
         if (!handleLogin)

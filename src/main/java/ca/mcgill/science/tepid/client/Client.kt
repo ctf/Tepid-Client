@@ -15,6 +15,7 @@ import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.models.data.SessionRequest
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.IOException
+import kotlin.system.exitProcess
 
 class Client private constructor(observers: Array<out EventObserver>) : EventObservable {
 
@@ -35,6 +36,12 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
     }
 
     class ClientException(message: String) : RuntimeException(message)
+
+    private fun fail(message: String, e: Exception): Nothing {
+        log.error(message, e)
+        observers.forEach(EventObserver::unbind)
+        exitProcess(-1)
+    }
 
     private fun create(observers: Array<out EventObserver>) {
         log.info("******************************")
@@ -65,7 +72,11 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
             ClientUtils.newId() to name
         }.toMap()
 
-        manager.bind(queueIds, defaultQueue)
+        try {
+            manager.bind(queueIds, defaultQueue)
+        } catch (e: Exception) {
+            fail("Error binding the manager", e)
+        }
 
         try {
             LPDServer(if (Config.IS_WINDOWS) 515 else 8515).use { lpd ->
@@ -88,8 +99,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
                 lpd.start()
             }
         } catch (e: IOException) {
-            log.error("Failed to bind LPDServer", e)
-            throw ClientException("Failed to bind LDPServer")
+            fail("Failed to bind LPDServer", e)
         }
     }
 
@@ -134,6 +144,8 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
             bound
         }.all { it }
     }
+
+    override fun getObserverNames(): List<String> = observers.map(EventObserver::name)
 
     override val isWindows: Boolean
         get() = Config.IS_WINDOWS

@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client.ui.full.text;
+package ca.mcgill.science.tepid.client.ui.text;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

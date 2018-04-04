@@ -33,4 +33,9 @@ interface EventObservable {
      */
     fun addObservers(vararg observers: EventObserver): Boolean
 
+    /**
+     * Returns a list of the current observers by name
+     */
+    fun getObserverNames(): List<String>
+
 }

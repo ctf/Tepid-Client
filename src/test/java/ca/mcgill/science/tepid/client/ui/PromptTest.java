@@ -1,6 +1,6 @@
 package ca.mcgill.science.tepid.client.ui;
 
-import ca.mcgill.science.tepid.client.ui.full.text.PasswordDialog;
+import ca.mcgill.science.tepid.client.ui.text.PasswordDialog;
 
 import javax.swing.*;
 

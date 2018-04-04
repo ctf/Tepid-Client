@@ -11,6 +11,11 @@ import ca.mcgill.science.tepid.models.data.PrintJob
 interface EventObserver {
 
     /**
+     * Unique identifier
+     */
+    val name: String
+
+    /**
      * Called during initialization to allow the listener to bind itself.
      * Any single time set up should be called here.
      * Each bind will be spawned in a different thread per listener, so this process can be long
@@ -24,6 +29,11 @@ interface EventObserver {
      * and no events will be passed
      */
     fun bind(observable: EventObservable): Boolean
+
+    /**
+     * Called when the lifecycle ends, to allow for stuff to unbind
+     */
+    fun unbind()
 
     /**
      * Called when a new session is requested. The only goal is to return a provided pair

@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client.ui.full.notification;
+package ca.mcgill.science.tepid.client.ui.notification;
 
 public class NotificationEntry {
     final boolean quota;

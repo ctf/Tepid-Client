@@ -1,6 +1,6 @@
 package ca.mcgill.science.tepid.client.ui;
 
-import ca.mcgill.science.tepid.client.ui.full.notification.Notification;
+import ca.mcgill.science.tepid.client.ui.notification.Notification;
 
 public class NotificationTest {
 

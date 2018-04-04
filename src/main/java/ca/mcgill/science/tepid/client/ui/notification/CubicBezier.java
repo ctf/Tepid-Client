@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client.ui.full.notification;
+package ca.mcgill.science.tepid.client.ui.notification;
 
 /**
  * Translated from JS: <a href="https://github.com/arian/cubic-bezier">Source</a>

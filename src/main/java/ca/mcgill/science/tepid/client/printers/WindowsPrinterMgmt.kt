@@ -12,12 +12,9 @@ import javax.swing.UIManager
 
 class WindowsPrinterMgmt : PrinterMgmt {
 
-    override fun preBind(): Boolean = try {
+    override fun preBind(): Boolean {
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-        true
-    } catch (e: Exception) {
-        log.error("Failed to bind", e)
-        false
+        return true
     }
 
     override fun tepidDataPath(): String = System.getenv("appdata") + "/.tepid"
@@ -31,7 +28,12 @@ class WindowsPrinterMgmt : PrinterMgmt {
     private fun Dispatch.spawn(vararg data: Pair<String, Any>): Dispatch {
         val port = Dispatch.invoke(this, "SpawnInstance_", Dispatch.Method, emptyArray(), IntArray(0)).toDispatch()
         data.forEach { (n, v) -> Dispatch.put(port, n, v) }
-        Dispatch.call(port, "Put_")
+        try {
+            Dispatch.call(port, "Put_")
+        } catch (e: ComFailException) {
+            log.error("Failed to put dispatch; did you install the Xerox drivers?")
+            throw e
+        }
         return port
     }
 
@@ -62,19 +64,14 @@ class WindowsPrinterMgmt : PrinterMgmt {
         )
 
         if (isDefault) {
-            val printer = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_Printer Where Name = '$queue'")
-                    .toDispatch()).nextElement().toDispatch()
+            val printer = execDispatch("Select * from Win32_Printer Where Name = '$queue'").nextElement().toDispatch()
             Dispatch.call(printer, "SetDefaultPrinter")
         }
     }
 
     override fun deletePrinterImpl(queue: String, id: String) {
-        val printer = execDispatch("Select * from Win32_Printer Where Name = '$queue'").nextElement().toDispatch()
-        wmi.invoke("Delete", Dispatch.call(printer, "Path_"))
-
-        //delete id
-        val printerPort = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_TCPIPPrinterPort Where Name = '$id'").toDispatch()).nextElement().toDispatch()
-        wmi.invoke("Delete", Dispatch.call(printerPort, "Path_"))
+        execDispatch("Select * from Win32_Printer Where Name = '$queue'").nextElement().toDispatch().delete()
+        execDispatch("Select * from Win32_TCPIPPrinterPort Where Name = '$id'").nextElement().toDispatch().delete()
     }
 
     override fun cleanPrinters() {

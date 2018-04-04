@@ -1,6 +1,7 @@
-package ca.mcgill.science.tepid.client.ui.full.text;
+package ca.mcgill.science.tepid.client.ui.text;
 
 import ca.mcgill.science.tepid.client.models.CurrentUser;
+import ca.mcgill.science.tepid.client.models.SessionAuth;
 import ca.mcgill.science.tepid.common.Utils;
 import in.waffl.q.Promise;
 import in.waffl.q.Q;
@@ -22,7 +23,7 @@ public class PasswordDialog extends JFrame {
     private boolean ok;
     private final BufferedImage authBg = loadImage(Utils.getResourceAsStream("authbg.png"));
     private JPasswordField txtPassword;
-    private Q<Result> deferredResult;
+    private Q<SessionAuth> deferredResult;
     private JTextField txtUpn;
     private final String user, domain;
     private final boolean inDomain;
@@ -34,8 +35,8 @@ public class PasswordDialog extends JFrame {
         }
     }
 
-    public static Promise<Result> prompt(final String domain) {
-        final Q<Result> q = Q.defer();
+    public static Promise<SessionAuth> prompt(final String domain) {
+        final Q<SessionAuth> q = Q.defer();
         new Thread("AsyncInvoke") {
             @Override
             public void run() {
@@ -58,7 +59,7 @@ public class PasswordDialog extends JFrame {
     /**
      * Create the frame.
      */
-    private PasswordDialog(Q<Result> q, String domain) {
+    private PasswordDialog(Q<SessionAuth> q, String domain) {
         this.deferredResult = q;
         this.domain = domain;
         setTitle("First Time Printing");
@@ -67,16 +68,17 @@ public class PasswordDialog extends JFrame {
         setResizable(false);
         setIconImages(Arrays.asList(icon));
         CurrentUser cu = CurrentUser.Companion.getCurrentUser();
-        this.inDomain = cu.getDomain() == null ? false : cu.getDomain().equals(domain);
+        this.inDomain = cu != null && cu.getDomain() != null && cu.getDomain().equals(domain);
         this.user = inDomain ? cu.getUser() : "";
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 if (!deferredResult.resolved()) {
                     if (ok) {
-                        deferredResult.resolve(new Result(txtUpn.getText().split("@")[0], new String(txtPassword.getPassword())));
+                        deferredResult.resolve(SessionAuth.create(txtUpn.getText().split("@")[0], new String(txtPassword.getPassword())));
                     } else {
-                        deferredResult.reject("Canceled by user");
+                        System.out.println("Cancelled by user");
+                        deferredResult.resolve(SessionAuth.INVALID);
                     }
                 }
             }
@@ -219,7 +221,7 @@ public class PasswordDialog extends JFrame {
     }
 
     public static class Result {
-        String upn, pw;
+        public String upn, pw;
 
         public Result(String upn, String pw) {
             this.upn = upn;

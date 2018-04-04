@@ -1,4 +1,4 @@
-package ca.mcgill.science.tepid.client.ui.full.notification;
+package ca.mcgill.science.tepid.client.ui.notification;
 
 import ca.mcgill.science.tepid.common.Utils;
 import com.io.jimm.StringUtils;

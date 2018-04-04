@@ -22,42 +22,54 @@ class WindowsPrinterMgmt : PrinterMgmt {
 
     override fun tepidDataPath(): String = System.getenv("appdata") + "/.tepid"
 
-    private fun Dispatch.spawn(vararg data: Pair<String, Any>) {
-        val port = Dispatch.invoke(this, "SpawnInstance_", Dispatch.Method, arrayOfNulls(0), IntArray(0)).toDispatch()
+    private fun getDispatch(param: String): Dispatch =
+            wmi.invoke("Get", param).toDispatch()
+
+    private fun execDispatch(param: String): EnumVariant =
+            EnumVariant(wmi.invoke("ExecQuery", param).toDispatch())
+
+    private fun Dispatch.spawn(vararg data: Pair<String, Any>): Dispatch {
+        val port = Dispatch.invoke(this, "SpawnInstance_", Dispatch.Method, emptyArray(), IntArray(0)).toDispatch()
         data.forEach { (n, v) -> Dispatch.put(port, n, v) }
+        Dispatch.call(port, "Put_")
+        return port
+    }
+
+    private fun Dispatch.delete() {
+        wmi.invoke("Delete", Dispatch.call(this, "Path_"))
     }
 
     override fun addPrinterImpl(queue: String, id: String, isDefault: Boolean) {
         wmi.getPropertyAsComponent("Security_")
                 .getPropertyAsComponent("Privileges")
                 .invoke("AddAsString", Variant("SeLoadDriverPrivilege"), Variant(true))
-        val win32TcpIpPrinterPort = wmi.invoke("Get", "Win32_TCPIPPrinterPort").toDispatch()
-        val port = Dispatch.invoke(win32TcpIpPrinterPort, "SpawnInstance_", Dispatch.Method, arrayOfNulls(0), IntArray(0)).toDispatch()
-        Dispatch.put(port, "Name", id)
-        Dispatch.put(port, "Protocol", 2)
-        Dispatch.put(port, "Queue", id)
-        Dispatch.put(port, "HostAddress", "127.0.0.1")
-        Dispatch.call(port, "Put_")
-        val win32Printer = wmi.invoke("Get", "Win32_Printer").toDispatch()
-        var printer = Dispatch.invoke(win32Printer, "SpawnInstance_", Dispatch.Method, arrayOfNulls(0), IntArray(0)).toDispatch()
 
-        val driver = "Xerox Global Print Driver PS"
-        Dispatch.put(printer, "DriverName", driver)
-        Dispatch.put(printer, "PortName", id)
-        Dispatch.put(printer, "DeviceID", queue)
-        Dispatch.put(printer, "Direct", true)
-        Dispatch.put(printer, "Network", true)
-        Dispatch.put(printer, "Shared", false)
-        Dispatch.put(printer, "Comment", "TEPID")
-        Dispatch.call(printer, "Put_")
+        getDispatch("Win32_TCPIPPrinterPort").spawn(
+                "Name" to id,
+                "Protocol" to 2,
+                "Queue" to id,
+                "HostAddress" to "127.0.0.1"
+        )
+
+        getDispatch("Win32_Printer").spawn(
+                "DriverName" to "Xerox Global Print Driver PS",
+                "PortName" to id,
+                "DeviceID" to queue,
+                "Direct" to true,
+                "Network" to true,
+                "Shared" to false,
+                "Comment" to "TEPID"
+        )
+
         if (isDefault) {
-            printer = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_Printer Where Name = '$queue'").toDispatch()).nextElement().toDispatch()
+            val printer = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_Printer Where Name = '$queue'")
+                    .toDispatch()).nextElement().toDispatch()
             Dispatch.call(printer, "SetDefaultPrinter")
         }
     }
 
     override fun deletePrinterImpl(queue: String, id: String) {
-        val printer = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_Printer Where Name = '$queue'").toDispatch()).nextElement().toDispatch()
+        val printer = execDispatch("Select * from Win32_Printer Where Name = '$queue'").nextElement().toDispatch()
         wmi.invoke("Delete", Dispatch.call(printer, "Path_"))
 
         //delete id
@@ -66,31 +78,29 @@ class WindowsPrinterMgmt : PrinterMgmt {
     }
 
     override fun cleanPrinters() {
-        val printers = EnumVariant(wmi.invoke("ExecQuery", "Select Name,PortName,Direct from Win32_Printer").toDispatch())
-        var printer = printers.nextElement().toDispatch()
-        while (printers.hasMoreElements()) {
+        val printers = execDispatch("Select Name,PortName,Direct from Win32_Printer")
+        for (variant in printers) {
+            val printer = variant.toDispatch()
             val direct = Dispatch.get(printer, "Direct").boolean
             if (direct) {
                 val name = Dispatch.get(printer, "Name").string
                 val portId = Dispatch.get(printer, "PortName").string
-                val port = EnumVariant(wmi.invoke("ExecQuery", "Select * from Win32_TCPIPPrinterPort Where Name = '$portId'").toDispatch()).nextElement().toDispatch()
+                val port = execDispatch("Select * from Win32_TCPIPPrinterPort Where Name = '$portId'").nextElement().toDispatch()
                 var printerDeleted = false
                 var portDeleted = false
                 try {
-                    wmi.invoke("Delete", Dispatch.call(printer, "Path_"))
+                    printer.delete()
                     printerDeleted = true
                 } catch (ignored: ComFailException) {
                 }
-
                 try {
-                    wmi.invoke("Delete", Dispatch.call(port, "Path_"))
+                    port.delete()
                     portDeleted = true
                 } catch (ignored: ComFailException) {
                 }
-
-                (if (printerDeleted && portDeleted) System.out else System.err).println("$name ($printerDeleted) - $portId ($portDeleted)")
+                val msg = "$name ($printerDeleted) - $portId ($portDeleted)"
+                if (printerDeleted && portDeleted) log.info(msg) else log.error(msg)
             }
-            printer = printers.nextElement().toDispatch()
         }
     }
 

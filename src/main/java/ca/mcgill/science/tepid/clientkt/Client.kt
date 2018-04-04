@@ -7,8 +7,7 @@ import ca.mcgill.science.tepid.api.fetch
 import ca.mcgill.science.tepid.client.LPDServer
 import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
 import ca.mcgill.science.tepid.clientkt.interfaces.EventObserver
-import ca.mcgill.science.tepid.clientkt.printers.CupsPrinterMgmt
-import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
+import ca.mcgill.science.tepid.clientkt.printers.PrinterMgmt
 import ca.mcgill.science.tepid.clientkt.utils.Auth
 import ca.mcgill.science.tepid.clientkt.utils.ClientUtils
 import ca.mcgill.science.tepid.clientkt.utils.Config
@@ -48,7 +47,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
 
         log.debug("Found ${queues.size} queues")
 
-        val manager = if (Config.IS_WINDOWS) WindowsPrinterMgmt() else CupsPrinterMgmt()
+        val manager = PrinterMgmt.printerManagement
 
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->
@@ -58,11 +57,12 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         }
 
         var defaultQueue: String? = null
-        val queueIds = queues.filter { it.name != null }.map {
+        val queueIds: Map<String, String> = queues.mapNotNull {
+            val name = it.name ?: return@mapNotNull null
             val defaultOn = it.defaultOn
             if (defaultOn != null && ClientUtils.wildcardMatch(defaultOn, ClientUtils.hostname))
-                defaultQueue = it.name
-            ClientUtils.newId() to it.name
+                defaultQueue = name
+            ClientUtils.newId() to name
         }.toMap()
 
         manager.bind(queueIds, defaultQueue)

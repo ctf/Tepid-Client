@@ -14,6 +14,7 @@ public class LPDServer implements Closeable {
     private Queue<LPDJobListener> listeners = new ConcurrentLinkedQueue<>();
 
     public LPDServer(int port) throws IOException {
+        System.out.println("Creating LPDServer in port " + port);
         serverSock = new ServerSocket(port, 0, InetAddress.getByName(null));
     }
 
@@ -30,6 +31,7 @@ public class LPDServer implements Closeable {
     @Override
     public void close() throws IOException {
         this.closed = true;
+        System.out.println("Closing LPDServer");
         serverSock.close();
     }
 

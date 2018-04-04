@@ -1,9 +1,9 @@
 package ca.mcgill.science.tepid.client.internal
 
-import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
-import ca.mcgill.science.tepid.clientkt.interfaces.EventObserver
-import ca.mcgill.science.tepid.clientkt.ui.console.ConsoleObserver
-import ca.mcgill.science.tepid.clientkt.utils.Config
+import ca.mcgill.science.tepid.client.interfaces.EventObservable
+import ca.mcgill.science.tepid.client.interfaces.EventObserver
+import ca.mcgill.science.tepid.client.ui.console.ConsoleObserver
+import ca.mcgill.science.tepid.client.utils.Config
 
 class TestEventObservable : EventObservable {
 

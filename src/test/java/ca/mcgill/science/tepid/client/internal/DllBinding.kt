@@ -1,7 +1,7 @@
 package ca.mcgill.science.tepid.client.internal
 
-import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
-import ca.mcgill.science.tepid.clientkt.utils.Config
+import ca.mcgill.science.tepid.client.printers.WindowsPrinterMgmt
+import ca.mcgill.science.tepid.client.utils.Config
 import ca.mcgill.science.tepid.utils.WithLogging
 import org.junit.Test
 import kotlin.test.assertTrue

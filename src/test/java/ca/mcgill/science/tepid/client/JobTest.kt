@@ -2,8 +2,8 @@ package ca.mcgill.science.tepid.client
 
 import ca.mcgill.science.tepid.client.internal.TestEventObservable
 import ca.mcgill.science.tepid.client.internal.TestUtils
-import ca.mcgill.science.tepid.clientkt.utils.ClientUtils
-import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
+import ca.mcgill.science.tepid.client.utils.ClientUtils
+import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.enums.Room
 import ca.mcgill.science.tepid.utils.WithLogging

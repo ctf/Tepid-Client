@@ -4,8 +4,8 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.getJobChanges
-import ca.mcgill.science.tepid.client.Event
-import ca.mcgill.science.tepid.client.Fail
+import ca.mcgill.science.tepid.client.models.Event
+import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session

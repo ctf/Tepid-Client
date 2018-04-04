@@ -1,7 +1,7 @@
 package ca.mcgill.science.tepid.client.ui.observers
 
-import ca.mcgill.science.tepid.client.Event
-import ca.mcgill.science.tepid.client.Fail
+import ca.mcgill.science.tepid.client.models.Event
+import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
 import ca.mcgill.science.tepid.client.models.SessionAuth

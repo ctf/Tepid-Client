@@ -8,24 +8,48 @@ import com.jacob.com.EnumVariant;
 import com.jacob.com.Variant;
 
 import javax.swing.*;
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 
 public class WindowsPrinterMgmt implements PrinterMgmt {
 
     private String user = Config.INSTANCE.getUSER_NAME();
 
     static {
+        if (loadJacob()) {
+            System.out.println("Loaded jacob");
+        }
+    }
+
+    public static boolean loadJacob() {
+        File libs = new File("files/libs");
+        if (!libs.isDirectory()) {
+            return false;
+        }
+        System.setProperty("java.library.path", libs.getAbsolutePath());
+        //set sys_paths to null
+        try {
+            final Field sysPathsField = ClassLoader.class.getDeclaredField("sys_paths");
+            sysPathsField.setAccessible(true);
+            sysPathsField.set(null, null);
+        } catch (Exception e) {
+            return false;
+        }
         System.out.println("Getting ActiveXComponent");
         int bit = Integer.parseInt(System.getProperty("sun.arch.data.model"));
         System.out.println(String.format("%d bit system", bit));
         switch (bit) {
             case 32:
-                System.load("jacob-1.18-M2-x86.dll");
+                System.loadLibrary("jacob-1.18-M2-x86");
                 break;
             case 64:
-                System.load("jacob-1.18-M2-x64.dll");
+                System.loadLibrary("jacob-1.18-M2-x64");
                 break;
+            default:
+                return false;
         }
+        return true;
     }
 
     private static ActiveXComponent wmi = new ActiveXComponent("winmgmts:\\\\localhost\\root\\CIMV2");

@@ -1,6 +1,7 @@
 package ca.mcgill.science.tepid.client;
 
 import ca.mcgill.science.tepid.models.data.PrintJob;
+import kotlin.Pair;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -63,8 +64,8 @@ public class LPDClientHandler extends Thread {
                                 case 0x2: {
                                     System.out.println("2 Receive Control File");
                                     Pair<Integer, String> data = getJobData(subparams);
-                                    int bytes = data.first;
-                                    String name = data.second;
+                                    int bytes = data.getFirst();
+                                    String name = data.getSecond();
                                     System.out.printf("%s - %d bytes%n", name, bytes);
                                     out.write(ack);
                                     char[] control = new char[bytes + 1]; //+ 1 is to account for null byte sent by lpd to indicate end of control
@@ -91,8 +92,8 @@ public class LPDClientHandler extends Thread {
                                     System.out.println("3 Receive Job Data");
 //							sendNotification("Print job received", "Your job has started printing", "timer");
                                     Pair<Integer, String> data = getJobData(subparams);
-                                    int bytes = data.first;
-                                    String name = data.second;
+                                    int bytes = data.getFirst();
+                                    String name = data.getSecond();
                                     System.out.println(subparams);
                                     System.out.printf("%s - %d bytes%n", name, bytes);
                                     out.write(ack);

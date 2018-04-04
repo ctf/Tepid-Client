@@ -1,20 +1,22 @@
 package ca.mcgill.science.tepid.client.internal
 
+import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
+import ca.mcgill.science.tepid.clientkt.utils.Config
+import ca.mcgill.science.tepid.utils.WithLogging
 import org.junit.Test
-import java.io.File
-import kotlin.test.fail
+import kotlin.test.assertTrue
 
 class DllBinding {
 
+    private companion object : WithLogging()
+
     @Test
     fun bind() {
-        val bit = System.getProperty("sun.arch.data.model").toInt()
-
-        when (bit) {
-            32 -> System.load("jacob-1.18-M2-x86.dll")
-            64 -> System.load("jacob-1.18-M2-x64.dll")
-            else -> fail("No dll found for $bit bit system")
+        if (!Config.IS_WINDOWS) {
+            log.trace("Skipping dll test")
+            return
         }
+        assertTrue(WindowsPrinterMgmt.loadJacob())
     }
 
 }

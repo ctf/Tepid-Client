@@ -4,11 +4,11 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.fetch
-import ca.mcgill.science.tepid.clientkt.printers.CupsPrinterMgmt
 import ca.mcgill.science.tepid.client.LPDServer
-import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
 import ca.mcgill.science.tepid.clientkt.interfaces.EventObservable
 import ca.mcgill.science.tepid.clientkt.interfaces.EventObserver
+import ca.mcgill.science.tepid.clientkt.printers.CupsPrinterMgmt
+import ca.mcgill.science.tepid.clientkt.printers.WindowsPrinterMgmt
 import ca.mcgill.science.tepid.clientkt.utils.Auth
 import ca.mcgill.science.tepid.clientkt.utils.ClientUtils
 import ca.mcgill.science.tepid.clientkt.utils.Config
@@ -35,10 +35,6 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         create(observers)
     }
 
-    private fun fail(message: String): Nothing {
-        throw ClientException(message)
-    }
-
     class ClientException(message: String) : RuntimeException(message)
 
     private fun create(observers: Array<out EventObserver>) {
@@ -48,7 +44,9 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
 
         addObservers(*observers)
 
-        val queues = apiNoAuth.getQueues().executeDirect() ?: fail("Could not get queue data")
+        val queues = apiNoAuth.getQueues().executeDirect() ?: throw ClientException("Could not get queue data")
+
+        log.debug("Found ${queues.size} queues")
 
         val manager = if (Config.IS_WINDOWS) WindowsPrinterMgmt() else CupsPrinterMgmt()
 
@@ -91,7 +89,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
             }
         } catch (e: IOException) {
             log.error("Failed to bind LPDServer", e)
-            fail("Failed to bind LDPServer")
+            throw ClientException("Failed to bind LDPServer")
         }
     }
 
@@ -141,6 +139,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         get() = Config.IS_WINDOWS
 
     companion object : WithLogging() {
+        @JvmStatic
         fun create(vararg observers: EventObserver): Client? =
                 try {
                     Client(observers)

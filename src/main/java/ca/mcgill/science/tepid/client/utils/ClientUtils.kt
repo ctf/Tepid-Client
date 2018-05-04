@@ -147,53 +147,53 @@ object ClientUtils : WithLogging() {
         }
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
         var processing = true
-        for (attempt in 1..5) {
-            if (isInterrupted()) {
-                log.debug("Watcher interrupted")
-                return false
-            }
-//            try {
-////                api.getJobChanges(jobId).executeDirect()
-////            } catch (e: Exception) {
-////                if (attempt == 1)
-////                    log.error("Malformed job change", e)
-////            }
-            Thread.sleep(5000)
-            val job = api.getJob(jobId).executeDirect()
-            if (job == null) {
-                log.error("Job not found; token probably changed")
-                emitter.notify { it.onErrorReceived("Job could not be located") }
-                return false
-            }
-            log.info("Job $job")
-            if (job.failed != -1L) {
-                val fail = when (job.error?.toLowerCase()) {
-                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
-                    "color disabled" -> Fail.COLOR_DISABLED
-                    else -> Fail.GENERIC
-                }
-                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
-                log.info("Job failed")
-                return false
-            }
-            if (processing) {
-                if (job.processed != -1L && job.destination != null) {
-                    processing = false
-                    if (job.printed == -1L) {
-                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
-                    }
-                }
-            }
-            if (!processing && job.printed == -1L) {
-                val quota = api.getQuota(user).executeDirect()
-                if (quota != null) {
-                    val oldQuota = quota + job.colorPages * 2 + job.pages
-                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
-                }
-                log.info("Job succeeded")
-                return true
-            }
-        }
+//        for (attempt in 1..5) {
+//            if (isInterrupted()) {
+//                log.debug("Watcher interrupted")
+//                return false
+//            }
+////            try {
+//////                api.getJobChanges(jobId).executeDirect()
+//////            } catch (e: Exception) {
+//////                if (attempt == 1)
+//////                    log.error("Malformed job change", e)
+//////            }
+//            Thread.sleep(5000)
+//            val job = api.getJob(jobId).executeDirect()
+//            if (job == null) {
+//                log.error("Job not found; token probably changed")
+//                emitter.notify { it.onErrorReceived("Job could not be located") }
+//                return false
+//            }
+//            log.info("Job $job")
+//            if (job.failed != -1L) {
+//                val fail = when (job.error?.toLowerCase()) {
+//                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
+//                    "color disabled" -> Fail.COLOR_DISABLED
+//                    else -> Fail.GENERIC
+//                }
+//                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+//                log.info("Job failed")
+//                return false
+//            }
+//            if (processing) {
+//                if (job.processed != -1L && job.destination != null) {
+//                    processing = false
+//                    if (job.printed == -1L) {
+//                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
+//                    }
+//                }
+//            }
+//            if (!processing && job.printed == -1L) {
+//                val quota = api.getQuota(user).executeDirect()
+//                if (quota != null) {
+//                    val oldQuota = quota + job.colorPages * 2 + job.pages
+//                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
+//                }
+//                log.info("Job succeeded")
+//                return true
+//            }
+//        }
         log.info("Finished listening with longpoll")
         return false
     }

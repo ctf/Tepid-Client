@@ -45,20 +45,32 @@ dependencies {
     compile "ca.mcgill.tepid-commons:models:$TEPID_COMMONS"
     compile "ca.mcgill.tepid-commons:utils:$TEPID_COMMONS"
 
-    // https://mvnrepository.com/artifact/org.glassfish.jersey.containers/jersey-container-servlet
-    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-servlet', version: '2.27'
-
     // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
     compile group: 'com.dorkbox', name: 'SystemTray', version: '3.12'
 
     // https://mvnrepository.com/artifact/org.apache.commons/commons-email
     compile group: 'org.apache.commons', name: 'commons-email', version: '1.4'
 
-//    // https://mvnrepository.com/artifact/org.tukaani/xz
+    /*
+     * Compression stream dependencies
+     * Note that all of these are necessary, even though their removal may not all result in compile time issues
+     */
+
+    // https://mvnrepository.com/artifact/org.tukaani/xz
     compile group: 'org.tukaani', name: 'xz', version: '1.8'
 
-//    // https://mvnrepository.com/artifact/org.glassfish.jersey.media/jersey-media-json-jackson
-    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.22.1'
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.core/jersey-common
+    compile group: 'org.glassfish.jersey.core', name: 'jersey-common', version: '2.27'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.containers/jersey-container-servlet
+    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-servlet', version: '2.27'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.inject/jersey-hk2
+    compile group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.27'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.media/jersey-media-json-jackson
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-jackson', version: '2.27'
+
 
 }
 

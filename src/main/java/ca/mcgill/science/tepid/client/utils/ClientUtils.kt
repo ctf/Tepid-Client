@@ -3,10 +3,9 @@ package ca.mcgill.science.tepid.client.utils
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
-import ca.mcgill.science.tepid.api.getJobChanges
+import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.Event
 import ca.mcgill.science.tepid.client.models.Fail
-import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
@@ -21,6 +20,12 @@ import javax.ws.rs.client.Entity
 import javax.ws.rs.client.WebTarget
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.ext.WriterInterceptor
+
+class ClientException(message: String) : RuntimeException(message)
+
+fun fail(message: String): Nothing = throw ClientException(message)
+
+fun isInterrupted() = Thread.currentThread().isInterrupted
 
 object ClientUtils : WithLogging() {
 
@@ -72,8 +77,10 @@ object ClientUtils : WithLogging() {
         ClientBuilder.newBuilder()
                 .register(JacksonFeature::class.java)
                 .register(WriterInterceptor { ctx ->
+                    log.info("Output stream start")
                     val output = ctx.outputStream
                     ctx.outputStream = XZOutputStream(output, LZMA2Options())
+                    log.info("Output stream proceed")
                     ctx.proceed()
                 }).build().target(Config.SERVER_URL)
     }
@@ -84,15 +91,23 @@ object ClientUtils : WithLogging() {
      * @param stream data stream for file
      * @param session session data that must be valid. This will not be tested within this method
      * @param emitter observable to consume status updates
-     * @return watcher thread if everything went well, otherwise null
+     * @return callable returning true if successful and false otherwise
      */
-    fun print(job: PrintJob, stream: InputStream, session: Session, emitter: EventObservable): Thread? {
+    fun print(job: PrintJob, stream: InputStream, session: Session, emitter: EventObservable): (() -> Boolean)? {
         log.debug(job)
 
         log.debug("Creating new print job")
 
-        val user = session.user.shortUser ?: return null
+        fun fail(message: String): (() -> Boolean)? {
+            log.error("Print attempt failed: $message")
+            return null
+        }
+
+        val user = session.user.shortUser ?: return fail("No short user found")
         val authHeader = session.authHeader
+
+        log.info("Header $authHeader")
+
         val api = TepidApi(Config.SERVER_URL, Config.DEBUG).create {
             tokenRetriever = { authHeader }
         }
@@ -100,50 +115,55 @@ object ClientUtils : WithLogging() {
         val putJob = api.createNewJob(job).executeDirect()
 
         if (putJob?.ok != true) {
-            log.error("Could not properly create new job")
             emitter.notify { it.onErrorReceived("Failed to send job") }
             consumeStream(stream)
-            return null
+            return fail("Could not properly create new job")
         }
 
         val jobId = putJob.id
-        val watcherThread = Thread(Runnable { watchJob(jobId, user, api, emitter) }, "JobWatcher $jobId")
-        watcherThread.start()
+
+        log.debug("Sending job data for $jobId")
+
         val response = tepidServerXz.path("jobs").path(jobId)
                 .request(MediaType.TEXT_PLAIN)
-                .header("Authorization", "Token ${session.authHeader}")
+                .header("Authorization", "Token $authHeader")
                 .put(Entity.entity(stream, "application/x-xz"))
+        log.debug("Job sent")
         log.debug(response.readEntity(String::class.java))
-        return watcherThread
+        return { watchJob(jobId, user, api, emitter) }
     }
 
-    private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable) {
+    /**
+     * Watch the job
+     * Returns [true] if a success response was captured
+     */
+    private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
         log.info("Starting job watcher")
-        fun isInterrupted() = Thread.currentThread().isInterrupted
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
             log.error("Job $jobId does not exist; cannot watch")
             emitter.notify { it.onErrorReceived("Could not watch print job") }
-            return
+            return false
         }
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
         var processing = true
         for (attempt in 1..5) {
             if (isInterrupted()) {
                 log.debug("Watcher interrupted")
-                return
+                return false
             }
-            try {
-                api.getJobChanges(jobId).executeDirect()
-            } catch (e: Exception) {
-                if (attempt == 1)
-                    log.error("Malformed job change", e)
-            }
+//            try {
+////                api.getJobChanges(jobId).executeDirect()
+////            } catch (e: Exception) {
+////                if (attempt == 1)
+////                    log.error("Malformed job change", e)
+////            }
+            Thread.sleep(5000)
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify { it.onErrorReceived("Job could not be located") }
-                return
+                return false
             }
             log.info("Job $job")
             if (job.failed != -1L) {
@@ -154,7 +174,7 @@ object ClientUtils : WithLogging() {
                 }
                 emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
                 log.info("Job failed")
-                return
+                return false
             }
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
@@ -171,9 +191,10 @@ object ClientUtils : WithLogging() {
                     emitter.notify { it.onQuotaChanged(quota, oldQuota) }
                 }
                 log.info("Job succeeded")
-                return
+                return true
             }
         }
         log.info("Finished listening with longpoll")
+        return false
     }
 }

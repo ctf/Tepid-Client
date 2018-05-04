@@ -2,9 +2,10 @@ package ca.mcgill.science.tepid.client.utils
 
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.PropUtils
+import ca.mcgill.science.tepid.utils.WithLogging
 import java.util.*
 
-object Auth {
+object Auth : WithLogging() {
 
     val token: String
         get() = "$tokenUser:$tokenId"
@@ -14,6 +15,9 @@ object Auth {
 
     val user: String
         get() = tokenUser ?: ""
+
+    val id: String
+        get() = tokenId ?: ""
 
     val hasToken: Boolean
         get() = tokenUser?.isNotBlank() == true && tokenId?.isNotBlank() == true
@@ -37,11 +41,13 @@ object Auth {
     }
 
     fun save() {
+        log.trace("Saving")
         props.setProperty("token", token)
         PropUtils.saveProps(props, Config.PROP_PATH, "Tepid")
     }
 
     fun clear() {
+        log.trace("Clearing")
         tokenUser = null
         tokenId = null
     }

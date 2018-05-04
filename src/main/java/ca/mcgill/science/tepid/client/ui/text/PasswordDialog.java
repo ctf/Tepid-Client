@@ -77,7 +77,6 @@ public class PasswordDialog extends JFrame {
                     if (ok) {
                         deferredResult.resolve(SessionAuth.create(txtUpn.getText().split("@")[0], new String(txtPassword.getPassword())));
                     } else {
-                        System.out.println("Cancelled by user");
                         deferredResult.resolve(SessionAuth.INVALID);
                     }
                 }

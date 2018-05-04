@@ -22,6 +22,7 @@ public class LPDServer implements Closeable {
         while (!closed) {
             try {
                 new LPDClientHandler(serverSock.accept(), LPDServer.this).start();
+                System.out.println("New lpd");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -51,6 +52,11 @@ public class LPDServer implements Closeable {
                     @Override
                     public void run() {
                         l.printJob(p, pis);
+                        try {
+                            pis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }.start();
             } catch (IOException e) {

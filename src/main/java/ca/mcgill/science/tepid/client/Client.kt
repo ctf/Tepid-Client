@@ -63,6 +63,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->
                 data ?: return@fetch
+                log.info("Initial quota retrieved: $data")
                 notify { it.onQuotaChanged(data, -1) }
             }
         }

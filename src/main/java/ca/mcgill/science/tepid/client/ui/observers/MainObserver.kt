@@ -16,7 +16,7 @@ object MainObserver : EventObserver {
     override val name: String = "Main Delegate"
 
     override fun bind(observable: EventObservable): Boolean {
-        observable.addObserver(PanelObserver(), ConsoleObserver())
+        observable.addObservers(PanelObserver(), ConsoleObserver())
         return false
     }
 

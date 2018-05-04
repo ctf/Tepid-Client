@@ -1,9 +1,9 @@
 package ca.mcgill.science.tepid.client.ui.observers
 
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
+import ca.mcgill.science.tepid.client.models.Event
+import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.models.SessionAuth
 import ca.mcgill.science.tepid.models.data.PrintJob
 import java.util.*
@@ -30,15 +30,15 @@ class ConsoleObserver(private val handleLogin: Boolean = false) : EventObserver 
     }
 
     override fun onJobReceived(printJob: PrintJob, event: Event, fail: Fail) {
-        println("PrintJob $printJob, $event, $fail")
+        println("Console: PrintJob $printJob, $event, $fail")
     }
 
     override fun onQuotaChanged(quota: Int, oldQuota: Int) {
-        println("Quota changed to $quota, old $oldQuota")
+        println("Console: Quota changed to $quota, old $oldQuota")
     }
 
     override fun onErrorReceived(error: String) {
-        println("Error: $error")
+        System.err.println("Console: Error: $error")
     }
 
 }

@@ -3,6 +3,7 @@ package ca.mcgill.science.tepid.client.utils
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
+import ca.mcgill.science.tepid.api.getJobChanges
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.Event
 import ca.mcgill.science.tepid.client.models.Fail
@@ -73,14 +74,15 @@ object ClientUtils : WithLogging() {
         }
     }
 
+    /**
+     * Target used to compress file stream
+     */
     private val tepidServerXz: WebTarget by lazy {
         ClientBuilder.newBuilder()
                 .register(JacksonFeature::class.java)
                 .register(WriterInterceptor { ctx ->
-                    log.info("Output stream start")
                     val output = ctx.outputStream
                     ctx.outputStream = XZOutputStream(output, LZMA2Options())
-                    log.info("Output stream proceed")
                     ctx.proceed()
                 }).build().target(Config.SERVER_URL)
     }
@@ -98,12 +100,9 @@ object ClientUtils : WithLogging() {
 
         log.debug("Creating new print job")
 
-        fun fail(message: String): (() -> Boolean)? {
-            log.error("Print attempt failed: $message")
-            return null
-        }
+        // todo short user shouldn't be nullable anyways
+        val user = session.user.shortUser ?: return null
 
-        val user = session.user.shortUser ?: return fail("No short user found")
         val authHeader = session.authHeader
 
         log.info("Header $authHeader")
@@ -117,7 +116,7 @@ object ClientUtils : WithLogging() {
         if (putJob?.ok != true) {
             emitter.notify { it.onErrorReceived("Failed to send job") }
             consumeStream(stream)
-            return fail("Could not properly create new job")
+            return null
         }
 
         val jobId = putJob.id
@@ -147,53 +146,53 @@ object ClientUtils : WithLogging() {
         }
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
         var processing = true
-//        for (attempt in 1..5) {
-//            if (isInterrupted()) {
-//                log.debug("Watcher interrupted")
-//                return false
-//            }
-////            try {
-//////                api.getJobChanges(jobId).executeDirect()
-//////            } catch (e: Exception) {
-//////                if (attempt == 1)
-//////                    log.error("Malformed job change", e)
-//////            }
-//            Thread.sleep(5000)
-//            val job = api.getJob(jobId).executeDirect()
-//            if (job == null) {
-//                log.error("Job not found; token probably changed")
-//                emitter.notify { it.onErrorReceived("Job could not be located") }
-//                return false
-//            }
-//            log.info("Job $job")
-//            if (job.failed != -1L) {
-//                val fail = when (job.error?.toLowerCase()) {
-//                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
-//                    "color disabled" -> Fail.COLOR_DISABLED
-//                    else -> Fail.GENERIC
-//                }
-//                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
-//                log.info("Job failed")
-//                return false
-//            }
-//            if (processing) {
-//                if (job.processed != -1L && job.destination != null) {
-//                    processing = false
-//                    if (job.printed == -1L) {
-//                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
-//                    }
-//                }
-//            }
-//            if (!processing && job.printed == -1L) {
-//                val quota = api.getQuota(user).executeDirect()
-//                if (quota != null) {
-//                    val oldQuota = quota + job.colorPages * 2 + job.pages
-//                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
-//                }
-//                log.info("Job succeeded")
-//                return true
-//            }
-//        }
+        for (attempt in 1..5) {
+            if (isInterrupted()) {
+                log.debug("Watcher interrupted")
+                return false
+            }
+            try {
+                api.getJobChanges(jobId).execute().body()
+            } catch (e: Exception) {
+                if (attempt == 1)
+                    log.error("Malformed job change", e)
+                Thread.sleep(1000)
+            }
+            val job = api.getJob(jobId).executeDirect()
+            if (job == null) {
+                log.error("Job not found; token probably changed")
+                emitter.notify { it.onErrorReceived("Job could not be located") }
+                return false
+            }
+            log.info("Job $job")
+            if (job.failed != -1L) {
+                val fail = when (job.error?.toLowerCase()) {
+                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
+                    "color disabled" -> Fail.COLOR_DISABLED
+                    else -> Fail.GENERIC
+                }
+                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+                log.info("Job failed")
+                return false
+            }
+            if (processing) {
+                if (job.processed != -1L && job.destination != null) {
+                    processing = false
+                    if (job.printed == -1L) {
+                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
+                    }
+                }
+            }
+            if (!processing && job.printed == -1L) {
+                val quota = api.getQuota(user).executeDirect()
+                if (quota != null) {
+                    val oldQuota = quota + job.colorPages * 2 + job.pages
+                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
+                }
+                log.info("Job succeeded")
+                return true
+            }
+        }
         log.info("Finished listening with longpoll")
         return false
     }

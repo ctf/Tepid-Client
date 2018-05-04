@@ -3,7 +3,6 @@ package ca.mcgill.science.tepid.client.utils
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
-import ca.mcgill.science.tepid.api.getJobChanges
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.Event
 import ca.mcgill.science.tepid.client.models.Fail
@@ -105,8 +104,6 @@ object ClientUtils : WithLogging() {
 
         val authHeader = session.authHeader
 
-        log.info("Header $authHeader")
-
         val api = TepidApi(Config.SERVER_URL, Config.DEBUG).create {
             tokenRetriever = { authHeader }
         }
@@ -124,10 +121,12 @@ object ClientUtils : WithLogging() {
         log.debug("Sending job data for $jobId")
 
         val response = tepidServerXz.path("jobs").path(jobId)
-                .request(MediaType.TEXT_PLAIN)
+                .request(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Token $authHeader")
                 .put(Entity.entity(stream, "application/x-xz"))
+
         log.debug("Job sent")
+
         log.debug(response.readEntity(String::class.java))
         return { watchJob(jobId, user, api, emitter) }
     }
@@ -147,24 +146,26 @@ object ClientUtils : WithLogging() {
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
         var processing = true
         for (attempt in 1..5) {
+            log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
-                log.debug("Watcher interrupted")
+                log.info("Watcher interrupted")
                 return false
             }
-            try {
-                api.getJobChanges(jobId).execute().body()
-            } catch (e: Exception) {
-                if (attempt == 1)
-                    log.error("Malformed job change", e)
-                Thread.sleep(1000)
-            }
+//            try {
+//                api.getJobChanges(jobId).execute().body()
+//            } catch (e: Exception) {
+//                if (attempt == 1)
+//                    log.error("Malformed job change", e)
+//                Thread.sleep(1000)
+//            }
+            Thread.sleep(1000) // todo change
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify { it.onErrorReceived("Job could not be located") }
                 return false
             }
-            log.info("Job $job")
+            log.debug("Job snapshot $job")
             if (job.failed != -1L) {
                 val fail = when (job.error?.toLowerCase()) {
                     "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
@@ -177,7 +178,13 @@ object ClientUtils : WithLogging() {
             }
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
+                    /*
+                     * We will only emit processing once, which is why it is now false
+                     * Note that the next statement may still run as processing is false,
+                     * so if this is already printed, the emitter will notify the observers
+                     */
                     processing = false
+                    log.info("Processing")
                     if (job.printed == -1L) {
                         emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
                     }
@@ -193,7 +200,7 @@ object ClientUtils : WithLogging() {
                 return true
             }
         }
-        log.info("Finished listening with longpoll")
+        log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }
 }

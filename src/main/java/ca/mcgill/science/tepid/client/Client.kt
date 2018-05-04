@@ -94,15 +94,14 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
                         return@addJobListener
                     }
 
-                    log.info("Printing job at ${Thread.currentThread().name}")
+                    log.trace("Printing job ${job.name}")
 
                     val watcher = ClientUtils.print(job, input, session, this)
                     if (watcher == null) {
                         log.error("An error occurred during the print process")
                         return@addJobListener
                     }
-                    log.info("Watching job at ${Thread.currentThread().name}")
-                    async { watcher }
+                    async(watcher)
                 }
                 lpd.start()
             }

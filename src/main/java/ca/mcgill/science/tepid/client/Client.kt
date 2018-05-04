@@ -63,6 +63,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->
                 data ?: return@fetch
+                log.info("Initial quota retrieved: $data")
                 notify { it.onQuotaChanged(data, -1) }
             }
         }
@@ -84,26 +85,23 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
 
         try {
             LPDServer(if (Config.IS_WINDOWS) 515 else 8515).use { lpd ->
-                lpd.addJobListener { p, input ->
+                lpd.addJobListener { job, input ->
+                    job.queueName = queueIds[job.queueName]
+                    log.info("Starting job for ${job.name}")
+                    val session = getValidSession()
+                    if (session == null) {
+                        notify { it.onErrorReceived("No session found") }
+                        return@addJobListener
+                    }
 
-                        p.queueName = queueIds[p.queueName]
-                        log.info("Starting job for ${p.name}")
-                        val session = getValidSession()
-                        if (session == null) {
-                            notify { it.onErrorReceived("No session found") }
-                            return@addJobListener
-                        }
+                    log.trace("Printing job ${job.name}")
 
-                        log.info("Printing job at ${Thread.currentThread().name}")
-
-                        val watcher = ClientUtils.print(p, input, session, this)
-                        if (watcher == null) {
-                            log.error("An error occurred during the print process")
-                            return@addJobListener
-                        }
-                        log.info("Watching job at ${Thread.currentThread().name}")
-
-                        watcher()
+                    val watcher = ClientUtils.print(job, input, session, this)
+                    if (watcher == null) {
+                        log.error("An error occurred during the print process")
+                        return@addJobListener
+                    }
+                    async(watcher)
                 }
                 lpd.start()
             }

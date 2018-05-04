@@ -73,14 +73,15 @@ object ClientUtils : WithLogging() {
         }
     }
 
+    /**
+     * Target used to compress file stream
+     */
     private val tepidServerXz: WebTarget by lazy {
         ClientBuilder.newBuilder()
                 .register(JacksonFeature::class.java)
                 .register(WriterInterceptor { ctx ->
-                    log.info("Output stream start")
                     val output = ctx.outputStream
                     ctx.outputStream = XZOutputStream(output, LZMA2Options())
-                    log.info("Output stream proceed")
                     ctx.proceed()
                 }).build().target(Config.SERVER_URL)
     }
@@ -98,15 +99,10 @@ object ClientUtils : WithLogging() {
 
         log.debug("Creating new print job")
 
-        fun fail(message: String): (() -> Boolean)? {
-            log.error("Print attempt failed: $message")
-            return null
-        }
+        // todo short user shouldn't be nullable anyways
+        val user = session.user.shortUser ?: return null
 
-        val user = session.user.shortUser ?: return fail("No short user found")
         val authHeader = session.authHeader
-
-        log.info("Header $authHeader")
 
         val api = TepidApi(Config.SERVER_URL, Config.DEBUG).create {
             tokenRetriever = { authHeader }
@@ -117,7 +113,7 @@ object ClientUtils : WithLogging() {
         if (putJob?.ok != true) {
             emitter.notify { it.onErrorReceived("Failed to send job") }
             consumeStream(stream)
-            return fail("Could not properly create new job")
+            return null
         }
 
         val jobId = putJob.id
@@ -125,10 +121,12 @@ object ClientUtils : WithLogging() {
         log.debug("Sending job data for $jobId")
 
         val response = tepidServerXz.path("jobs").path(jobId)
-                .request(MediaType.TEXT_PLAIN)
+                .request(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Token $authHeader")
                 .put(Entity.entity(stream, "application/x-xz"))
+
         log.debug("Job sent")
+
         log.debug(response.readEntity(String::class.java))
         return { watchJob(jobId, user, api, emitter) }
     }
@@ -148,24 +146,26 @@ object ClientUtils : WithLogging() {
         emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
         var processing = true
         for (attempt in 1..5) {
+            log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
-                log.debug("Watcher interrupted")
+                log.info("Watcher interrupted")
                 return false
             }
 //            try {
-////                api.getJobChanges(jobId).executeDirect()
-////            } catch (e: Exception) {
-////                if (attempt == 1)
-////                    log.error("Malformed job change", e)
-////            }
-            Thread.sleep(5000)
+//                api.getJobChanges(jobId).execute().body()
+//            } catch (e: Exception) {
+//                if (attempt == 1)
+//                    log.error("Malformed job change", e)
+//                Thread.sleep(1000)
+//            }
+            Thread.sleep(1000) // todo change
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify { it.onErrorReceived("Job could not be located") }
                 return false
             }
-            log.info("Job $job")
+            log.debug("Job snapshot $job")
             if (job.failed != -1L) {
                 val fail = when (job.error?.toLowerCase()) {
                     "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
@@ -178,7 +178,13 @@ object ClientUtils : WithLogging() {
             }
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
+                    /*
+                     * We will only emit processing once, which is why it is now false
+                     * Note that the next statement may still run as processing is false,
+                     * so if this is already printed, the emitter will notify the observers
+                     */
                     processing = false
+                    log.info("Processing")
                     if (job.printed == -1L) {
                         emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
                     }
@@ -194,7 +200,7 @@ object ClientUtils : WithLogging() {
                 return true
             }
         }
-        log.info("Finished listening with longpoll")
+        log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }
 }

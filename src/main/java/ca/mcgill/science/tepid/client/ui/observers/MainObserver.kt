@@ -1,9 +1,9 @@
 package ca.mcgill.science.tepid.client.ui.observers
 
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
+import ca.mcgill.science.tepid.client.models.Event
+import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.models.SessionAuth
 import ca.mcgill.science.tepid.models.data.PrintJob
 
@@ -20,14 +20,16 @@ object MainObserver : EventObserver {
         return false
     }
 
-    override fun unbind() = throw RuntimeException("Noop")
+    private fun noop(): Nothing = throw RuntimeException("Noop")
 
-    override fun onSessionRequest(attemptCount: Int): SessionAuth? = throw RuntimeException("Noop")
+    override fun unbind() = noop()
 
-    override fun onJobReceived(printJob: PrintJob, event: Event, fail: Fail) = throw RuntimeException("Noop")
+    override fun onSessionRequest(attemptCount: Int): SessionAuth? = noop()
 
-    override fun onQuotaChanged(quota: Int, oldQuota: Int) = throw RuntimeException("Noop")
+    override fun onJobReceived(printJob: PrintJob, event: Event, fail: Fail) = noop()
 
-    override fun onErrorReceived(error: String) = throw RuntimeException("Noop")
+    override fun onQuotaChanged(quota: Int, oldQuota: Int) = noop()
+
+    override fun onErrorReceived(error: String) = noop()
 
 }

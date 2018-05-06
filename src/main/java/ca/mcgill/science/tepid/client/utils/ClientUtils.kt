@@ -6,9 +6,14 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.Event
 import ca.mcgill.science.tepid.client.models.Fail
+import ca.mcgill.science.tepid.models.bindings.PrintError
+import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
+import ca.mcgill.science.tepid.models.data.PutResponse
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.glassfish.jersey.jackson.JacksonFeature
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
@@ -30,6 +35,8 @@ fun isInterrupted() = Thread.currentThread().isInterrupted
 object ClientUtils : WithLogging() {
 
     fun newId() = UUID.randomUUID().toString().replace("-", "")
+
+    val objectMapper = jacksonObjectMapper()
 
     val hostname: String? by lazy {
         var _p: Process? = null
@@ -125,10 +132,25 @@ object ClientUtils : WithLogging() {
                 .header("Authorization", "Token $authHeader")
                 .put(Entity.entity(stream, "application/x-xz"))
 
-        log.debug("Job sent")
-
-        log.debug(response.readEntity(String::class.java))
+        val responseMessage = response.readEntity(String::class.java)
+        log.debug("Job sent: $responseMessage")
+        val errorResponse = objectMapper.readValue<ErrorResponse>(responseMessage)
+        if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
+            job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
+            return { jobFailed(emitter, job) }
+        }
         return { watchJob(jobId, user, api, emitter) }
+    }
+
+    private fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
+        val fail = when (job.error?.toLowerCase()) {
+            PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
+            PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
+            PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
+            else -> Fail.GENERIC
+        }
+        emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+        return false
     }
 
     /**
@@ -166,16 +188,8 @@ object ClientUtils : WithLogging() {
                 return false
             }
             log.debug("Job snapshot $job")
-            if (job.failed != -1L) {
-                val fail = when (job.error?.toLowerCase()) {
-                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
-                    "color disabled" -> Fail.COLOR_DISABLED
-                    else -> Fail.GENERIC
-                }
-                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
-                log.info("Job failed")
-                return false
-            }
+            if (job.failed != -1L)
+                return jobFailed(emitter, job)
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
                     /*

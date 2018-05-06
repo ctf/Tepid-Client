@@ -9,7 +9,6 @@ import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.models.bindings.PrintError
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
-import ca.mcgill.science.tepid.models.data.PutResponse
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper

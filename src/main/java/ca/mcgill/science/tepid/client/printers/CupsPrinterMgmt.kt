@@ -1,6 +1,5 @@
 package ca.mcgill.science.tepid.client.printers
 
-import ca.mcgill.science.tepid.client.utils.Config
 import ca.mcgill.science.tepid.common.Utils
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.File

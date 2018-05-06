@@ -22,7 +22,7 @@ class PanelObserver : EventObserver {
     override val name: String = "Panel"
 
     private val systemTray: SystemTray? by lazy {
-//        SystemTray.FORCE_GTK2 = true
+        //        SystemTray.FORCE_GTK2 = true
         SystemTray.get()
     }
 

@@ -33,7 +33,7 @@ class JobTest {
                 TestUtils.testSession ?: fail("Invalid session"),
                 emitter) ?: fail("Failed to bind watch thread")
         println(System.currentTimeMillis())
-        watchThread.join()
+        watchThread()
         println(System.currentTimeMillis())
     }
 

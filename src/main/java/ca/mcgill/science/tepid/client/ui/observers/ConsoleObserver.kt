@@ -12,9 +12,7 @@ class ConsoleObserver(private val handleLogin: Boolean = false) : EventObserver 
 
     override val name: String = "Console"
 
-    override fun bind(observable: EventObservable): Boolean {
-        return true
-    }
+    override fun bind(observable: EventObservable): Boolean = true
 
     override fun unbind() = Unit
 

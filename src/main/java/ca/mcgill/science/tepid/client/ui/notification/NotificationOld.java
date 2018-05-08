@@ -19,10 +19,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class Notification extends JWindow {
+public class NotificationOld extends JWindow {
     private static final long serialVersionUID = -1841885707134092550L;
     private static final int green = 0x4D983E, yellow = 0xFFB300, red = 0xFF4033;
-    private static final Deque<Notification> active = new ConcurrentLinkedDeque<>();
+    private static final Deque<NotificationOld> active = new ConcurrentLinkedDeque<>();
 
     double y, ms = 2000;
     CubicBezier easeInOut = CubicBezier.create(0.42, 0, 0.58, 1.0, (1000.0 / 60.0 / ms) / 4.0);
@@ -33,7 +33,7 @@ public class Notification extends JWindow {
     private Thread animationThread;
     private final BlockingQueue<NotificationEntry> entries = new LinkedBlockingQueue<>();
 
-    public Notification() {
+    public NotificationOld() {
         final int w = 360, h = 90, p = 10;
         y = h;
         Rectangle screenBounds = this.getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
@@ -212,7 +212,7 @@ public class Notification extends JWindow {
                         } else {
                             quotaMode = false;
                             oldColor = color == null ? new Color(e.color) : color;
-                            Notification.this.color = new Color(e.color);
+                            NotificationOld.this.color = new Color(e.color);
                             oldIcon = icon;
                             if (e.icon != null) setIcon(e.icon);
                             else icon = null;
@@ -277,12 +277,12 @@ public class Notification extends JWindow {
         }
     }
 
-    public static void addActive(Notification n) {
+    public static void addActive(NotificationOld n) {
         active.add(n);
         repositionActive();
     }
 
-    public static void removeActive(Notification n) {
+    public static void removeActive(NotificationOld n) {
         active.remove(n);
         repositionActive();
     }
@@ -292,7 +292,7 @@ public class Notification extends JWindow {
         Rectangle screenBounds = active.getFirst().getGraphicsConfiguration().getDevice().getDefaultConfiguration().getBounds();
         final int p = 20;
         int nY = screenBounds.height - 40 - p;
-        for (Notification n : active) {
+        for (NotificationOld n : active) {
             Rectangle b = n.getBounds();
             nY -= b.height + p;
             n.setBounds(b.x, nY, b.width, b.height);
@@ -306,7 +306,7 @@ public class Notification extends JWindow {
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {
-                    Notification.this.repaint();
+                    NotificationOld.this.repaint();
                 }
             });
         }
@@ -331,9 +331,9 @@ public class Notification extends JWindow {
     public static int getQuotaColor(double q) {
         float distTo0 = (float) ((Math.max(100 - (q), 50) - 50) / 50),
                 distTo50 = Math.min((float) ((Math.max(150 - (q), 50) - 50) / 50), 1);
-        int green = 0xff000000 | Notification.green,
-                yellow = (((int) (distTo50 * 0xff)) << 24) | Notification.yellow,
-                red = (((int) (distTo0 * 0xff)) << 24) | Notification.red;
+        int green = 0xff000000 | NotificationOld.green,
+                yellow = (((int) (distTo50 * 0xff)) << 24) | NotificationOld.yellow,
+                red = (((int) (distTo0 * 0xff)) << 24) | NotificationOld.red;
         return combineColors(red, combineColors(yellow, green));
     }
 

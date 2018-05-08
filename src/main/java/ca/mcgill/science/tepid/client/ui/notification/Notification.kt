@@ -8,18 +8,96 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
 import java.awt.image.BufferedImage
 import java.io.IOException
-import java.util.*
 import java.util.concurrent.BlockingQueue
-import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.LinkedBlockingQueue
 import javax.imageio.ImageIO
 import javax.swing.JPanel
 import javax.swing.JWindow
 import javax.swing.SwingUtilities
 
-class NotificationWindow(val w: Int = WIDTH,
+/**
+ * Singleton reference for [NotificationHandler]
+ */
+object Notifications : NotificationHandlerContract by NotificationHandler()
+
+interface NotificationHandlerContract {
+    /**
+     * Send a new notification to display
+     * Notifications are queued and animated into display, granted its bounded window is not disposed
+     * Any notification sent after a window's disposal will be displayed in a new window
+     */
+    fun notify(model: NotificationModel)
+
+    /**
+     * Close the current window (if any) and dispose any of its associated notifications
+     */
+    fun close()
+
+    /**
+     * Get the current thread running the animations, if any
+     */
+    val thread: Thread?
+}
+
+/**
+ * Parent class that will handle all notifications
+ * Only one instance is needed
+ */
+class NotificationHandler : NotificationHandlerContract, WithLogging() {
+
+    var window: NotificationWindow? = null
+
+    private var eventReceiver = object : NotificationEventReceiver {
+        override fun onDispose(id: Long) {
+            synchronized(this@NotificationHandler) {
+                if (window?.id == id)
+                    window = null
+            }
+        }
+    }
+
+    @Synchronized
+    override fun notify(model: NotificationModel) {
+        if (window?.disposed != false) {
+            log.info("Creating new notification window")
+            window = NotificationWindow(eventReceiver = eventReceiver)
+        }
+        window?.notify(model)
+    }
+
+    override val thread: Thread?
+        @Synchronized
+        get() = window?.thread
+
+    @Synchronized
+    override fun close() {
+        window?.dispose()
+        window = null
+    }
+
+
+}
+
+/**
+ * Helper callback to relay events for better memory management
+ */
+interface NotificationEventReceiver {
+    fun onDispose(id: Long)
+}
+
+/**
+ * JWindow that handles notification displays
+ * Note that as soon as no notifications are queued or the window is closed,
+ * the window becomes invalidated
+ * See [NotificationHandler] for a singleton wrapper implementation
+ */
+class NotificationWindow(val id: Long = System.currentTimeMillis(),
+                         val w: Int = WIDTH,
                          val h: Int = HEIGHT,
-                         val p: Int = PADDING) : JWindow() {
+                         val p: Int = PADDING,
+                         val eventReceiver: NotificationEventReceiver? = null) {
+
+    private val window: JWindow = JWindow()
 
     private val entries: BlockingQueue<NotificationModel> = LinkedBlockingQueue()
     private var closeHover = false
@@ -31,9 +109,13 @@ class NotificationWindow(val w: Int = WIDTH,
         }
 
     private var quotaMode = false
-    private var _closed = false
-    val closed: Boolean
-        get() = _closed
+    private var _disposed = false
+
+    /**
+     * Checks if a window can still be used
+     */
+    val disposed: Boolean
+        get() = _disposed
 
     private var icon: BufferedImage? = null
     private var oldIcon: BufferedImage? = null
@@ -46,65 +128,55 @@ class NotificationWindow(val w: Int = WIDTH,
     private var oldTo = ""
     private var newFrom = ""
 
-    private var animationThread: Thread? = null
+    private var oldEntry: NotificationModel? = null
+    private var entry: NotificationModel? = null
+
+    val thread: Thread = getAnimationThread()
 
     private var notifY: Double = h.toDouble()
 
     init {
-        val screenBounds: Rectangle = graphicsConfiguration.device.defaultConfiguration.bounds
-        bounds = Rectangle(screenBounds.width - w - p,
-                screenBounds.height - h - p - 40,
-                w,
-                h)
-        contentPane = NotificationPanel()
-        opacity = 0.9f
+        window.apply {
+            val screenBounds: Rectangle = graphicsConfiguration.device.defaultConfiguration.bounds
+            bounds = Rectangle(screenBounds.width - w - p,
+                    screenBounds.height - h - p - 40,
+                    w,
+                    h)
+            log.info("Bounds $bounds")
+            contentPane = NotificationPanel()
+            opacity = 0.9f
+            isVisible = true
+        }
     }
 
     private fun safeRepaint() {
         if (SwingUtilities.isEventDispatchThread()) {
-            repaint()
+            window.repaint()
         } else {
-            SwingUtilities.invokeLater(this::repaint)
+            SwingUtilities.invokeLater(window::repaint)
         }
     }
 
-    private fun close() {
-        _closed = true
-        dispose()
-    }
+    fun dispose() = dispose(false)
 
-    private fun addNotification(notification: NotificationWindow) {
-        if (queue.add(notification))
-            reposition()
-    }
-
-    private fun removeNotification(notification: NotificationWindow) {
-        if (queue.remove(notification))
-            reposition()
-    }
-
-    private fun reposition() {
-        if (queue.isEmpty()) return
-        val bounds = queue.first.graphicsConfiguration.device.defaultConfiguration.bounds
-        val p = 20
-        var nY = bounds.height - 40 - p
-        queue.forEach {
-            val b = it.bounds
-            nY -= b.height + p
-            it.setBounds(b.x, nY, b.width, b.height)
-        }
-    }
-
-    override fun setVisible(b: Boolean) {
-        if (b) addNotification(this) else removeNotification(this)
-        super.setVisible(b)
-        if (b) startAnimationThread()
+    /**
+     * Removes any pending entries and stops the animation thread
+     */
+    @Synchronized
+    private fun dispose(notify: Boolean) {
+        if (_disposed) return
+        _disposed = true
+        entries.clear()
+        thread.interrupt()
+        window.dispose()
+        if (notify)
+            eventReceiver?.onDispose(id)
     }
 
     private fun animate(height: Int, fps: Int) {
         val frameMs: Int = 1000 / fps
         var carry: NotificationModel? = null
-        loop@ while (!Thread.interrupted()) {
+        loop@ while (!Thread.currentThread().isInterrupted && !_disposed) {
             var entry: NotificationModel = carry ?: entries.take()
             if (entry === carry)
                 carry = null
@@ -112,8 +184,10 @@ class NotificationWindow(val w: Int = WIDTH,
                 carry = entry
                 newFrom = entry.from.toString()
                 entry = StateNotification(entry.title, entry.body,
-                        quotaColor(entry.from.toFloat()), "")
+                        quotaColor(entry.from.toFloat()), NotificationIcon.NONE)
             }
+            if (entry !== carry)
+                log.debug("Showing notification $entry")
             if (title.isEmpty()) title = entry.title
             if (body.isEmpty()) body = entry.body
             when (entry) {
@@ -128,7 +202,7 @@ class NotificationWindow(val w: Int = WIDTH,
                     oldNotifColor = notifColor
                     notifColor = Color(entry.color)
                     oldIcon = icon
-                    setIcon(entry.icon)
+                    icon = entry.icon.image()
                     if (oldIcon == null && oldTo.isBlank()) {
                         oldIcon = icon
                         safeRepaint()
@@ -166,27 +240,30 @@ class NotificationWindow(val w: Int = WIDTH,
         else null
     }
 
-    fun setStatus(color: Int, icon: String, title: String, body: String) {
-        entries.add(StateNotification(title, body, color, icon))
+    fun notify(model: NotificationModel) {
+        if (_disposed) {
+            log.error("Cannot show notification in disposed window")
+            return
+        }
+        entries.add(model)
+        if (!thread.isAlive)
+            thread.start()
     }
 
-    fun setQuota(from: Int, to: Int, title: String, body: String) {
-        entries.add(TransitionNotification(title, body, from, to))
-    }
-
-    private fun startAnimationThread() {
-        val height = height
-        val fps = 60
-        if (animationThread?.isAlive == true) return
-        animationThread = Thread({
+    private fun getAnimationThread(): Thread {
+        val height = window.height
+        return Thread({
+            log.info("Starting animation")
             try {
-                animate(height, fps)
+                window.isVisible = true
+                animate(height, FPS)
             } catch (e: Exception) {
                 if (e !is InterruptedException)
                     log.error("Animation error", e)
             }
+            log.info("Finished animation")
+            dispose(true)
         }, "Animation")
-        animationThread?.start()
     }
 
     inner class NotificationPanel : JPanel() {
@@ -198,7 +275,7 @@ class NotificationWindow(val w: Int = WIDTH,
         val xButtonHover = resourceImage("x_hover.png")
 
         init {
-            addMouseMotionListener(object :MouseMotionAdapter() {
+            addMouseMotionListener(object : MouseMotionAdapter() {
                 override fun mouseMoved(e: MouseEvent) {
                     closeHover = e.x > width - 24 && e.y < 24
                 }
@@ -211,9 +288,34 @@ class NotificationWindow(val w: Int = WIDTH,
                 }
 
                 override fun mouseReleased(e: MouseEvent?) {
-                    if (closeHover) close()
+                    if (closeHover) dispose()
                 }
             })
+        }
+
+        private fun Graphics2D.draw(model: NotificationModel) {
+            when (model) {
+                is StateNotification -> {
+
+                }
+                is TransitionNotification -> {
+
+                }
+            }
+        }
+
+        private fun updateNotifColor(): Color = when {
+            quotaMode -> {
+                notifColor = Color(quotaColor(y.toFloat() / height), true)
+                notifColor
+            }
+            notifY >= height -> {
+                notifColor
+            }
+            else -> {
+                val newColor = ((1 - y.toFloat() / height) * 0xff).toInt() shl 24 or (oldNotifColor.rgb and 0xffffff)
+                Color(combineColors(newColor, notifColor.rgb), true)
+            }
         }
 
         override fun paint(g: Graphics) {
@@ -223,22 +325,14 @@ class NotificationWindow(val w: Int = WIDTH,
                 setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON)
                 font = titleFont
+
+                // background
+                this.color = updateNotifColor()
+                // title
                 val titleX = height + p // todo check
-                when {
-                    quotaMode -> {
-                        notifColor = Color(quotaColor(y.toFloat() / height), true)
-                        this.color = notifColor
-                    }
-                    notifY >= height -> {
-                        this.color = notifColor
-                    }
-                    else -> {
-                        val newColor = ((1 - y.toFloat() / height) * 0xff).toInt() shl 24 or (oldNotifColor.rgb and 0xffffff)
-                        this.color = Color(combineColors(newColor, notifColor.rgb), true)
-                    }
-                }
                 drawString(title, titleX, 24)
                 fillRect(0, 0, height, height)
+                // body
                 font = bodyFont
                 this.color = Color.BLACK
                 val lines = StringUtils.wrap(body, fontMetrics, width - height - p * 2)
@@ -250,6 +344,8 @@ class NotificationWindow(val w: Int = WIDTH,
                 }
                 val highY: Int = (-notifY % height).toInt()
                 val lowY: Int = highY + height
+
+                // per model
                 if (quotaMode) {
                     this.color = Color.WHITE
                     font = quotaFont
@@ -325,29 +421,49 @@ class NotificationWindow(val w: Int = WIDTH,
         private const val HEIGHT = 90
         private const val PADDING = 10
 
+        private const val FPS = 60
         private const val ms = 2000.0
         private val easeInOut = CubicBezier.create(
                 0.42, 0.0, 0.58, 1.0, 1000.0 / 60.0 / ms / 4.0)
 
-        private val queue: Deque<NotificationWindow> = ConcurrentLinkedDeque()
+        /**
+         * Merges two colors based on their alpha values
+         * Order does not matter
+         */
+        fun combineColors(c1: Int, c2: Int): Int {
+            val alpha1 = c1 shr 24 and 0xff
+            val alpha2 = c2 shr 24 and 0xff
 
-        fun combineColors(a: Int, b: Int): Int {
-            val aA = a shr 24 and 0xff
-            val rA = a shr 16 and 0xff
-            val gA = a shr 8 and 0xff
-            val bA = a and 0xff
-            val aB = b shr 24 and 0xff
-            val rB = b shr 16 and 0xff
-            val gB = b shr 8 and 0xff
-            val bB = b and 0xff
-            val rOut = rA * aA / 255 + rB * aB * (255 - aA) / (255 * 255)
-            val gOut = gA * aA / 255 + gB * aB * (255 - aA) / (255 * 255)
-            val bOut = bA * aA / 255 + bB * aB * (255 - aA) / (255 * 255)
-            val aOut = aA + aB * (255 - aA) / 255
-            return aOut and 0xff shl 24 or
-                    (rOut and 0xff shl 16) or
-                    (gOut and 0xff shl 8) or
-                    (bOut and 0xff)
+            // bit shift color parts and combine
+            val (r, g, b) = arrayOf(16, 8, 0).map { bit -> { color: Int -> color shr bit and 0xff } }.map {
+                it(c1) * alpha1 / 255 + it(c2) * alpha2 * (255 - alpha1) / (255 * 255)
+            }
+
+            val a = alpha1 + alpha2 * (255 - alpha1) / 255
+
+            // bit shift again and fold with 'or'
+            return arrayOf(a, r, g, b).reversedArray().foldIndexed(0) { i, color, part ->
+                color or (part and 0xff shl (i * 8))
+            }
+        }
+
+        /**
+         * Blend two colors together, where [ratio] is the weighting on [color2]
+         * For example, a ratio of 0 would equal [color1], and a ratio of 1 would equal [color2]
+         *
+         * Everything, including the alpha, will be weighted and outputted as a new [Color]
+         */
+        fun blend(color1: Color, color2: Color, ratio: Float): Color {
+            if (ratio !in 0..1)
+                throw IllegalArgumentException("Blend ratio must be between 0.0f and 1.0f; currently $ratio")
+            /**
+             * Maps a component retrieving function and applies it to both colors with the ratio
+             * Note that a * (1 - r) + b * r = a + (b - a) * r
+             */
+            val (r, g, b, a) = arrayOf<(Color) -> Int>({ it.red }, { it.green }, { it.blue }, { it.alpha }).map {
+                (it(color1) + (it(color2) - it(color1)) * ratio).toInt()
+            }
+            return Color(r, g, b, a)
         }
 
         fun resourceImage(name: String): BufferedImage? = try {

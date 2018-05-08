@@ -38,7 +38,7 @@ class LPDServer(port: Int) : WithLogging(), Closeable {
             listeners.clear()
             serverSock.close()
         } catch (e: IOException) {
-            log.error("Failed to close", e)
+            log.error("Failed to dispose", e)
         }
     }
 

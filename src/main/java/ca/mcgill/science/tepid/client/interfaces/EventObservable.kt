@@ -1,11 +1,34 @@
 package ca.mcgill.science.tepid.client.interfaces
 
+import ca.mcgill.science.tepid.client.models.Event
+import ca.mcgill.science.tepid.client.models.Init
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+
 /**
  * Main handler for all event related interactions
  */
 interface EventObservable {
 
-    fun notify(action: (obs: EventObserver) -> Unit)
+    val observers: Collection<EventObserver>
+
+    /**
+     * Executor to help delegate asynchronous methods
+     */
+    val executor: ExecutorService
+
+    fun initialize(init: Init) {
+        observers.forEach { it.initialize(init) }
+    }
+
+    fun notify(event: Event) {
+        observers.forEach {
+            executor.execute { it.onEvent(event) }
+        }
+    }
+
 
     /**
      * @return [true] if client is currently running on windows, [false] otherwise.
@@ -36,11 +59,19 @@ interface EventObservable {
     /**
      * Returns a list of the current observers by name
      */
-    fun getObserverNames(): List<String>
+    fun getObserverNames(): List<String> = observers.map(EventObserver::name)
 
     /**
      * Called to end the entire observable
      */
     fun terminate(): Nothing
+
+    companion object {
+
+        fun defaultExecutorService(): ExecutorService =
+                ThreadPoolExecutor(5, 30, 5, TimeUnit.MINUTES,
+                        ArrayBlockingQueue<Runnable>(300, true))
+
+    }
 
 }

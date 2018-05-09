@@ -157,7 +157,9 @@ public class Notification extends JWindow {
             }
         });
         this.setContentPane(content);
-        this.setOpacity(0.9f);
+        if (this.getGraphicsConfiguration().getDevice().isWindowTranslucencySupported(
+                GraphicsDevice.WindowTranslucency.TRANSLUCENT))
+            this.setOpacity(0.9f);
     }
 
     @Override
@@ -263,10 +265,14 @@ public class Notification extends JWindow {
 
     public void setStatus(int color, String icon, String title, String body) {
         this.entries.add(new NotificationEntry(color, icon, title, body));
+        if (!isVisible() && !isClosed())
+            setVisible(true);
     }
 
     public void setQuota(int from, int to, String title, String body) {
         this.entries.add(new NotificationEntry(from, to, title, body));
+        if (!isVisible() && !isClosed())
+            setVisible(true);
     }
 
     public static BufferedImage loadImage(InputStream input) {

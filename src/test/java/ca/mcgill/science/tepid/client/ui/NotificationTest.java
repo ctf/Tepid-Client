@@ -8,7 +8,6 @@ public class NotificationTest {
         String jobName = "blah_blah_blah.docx - Microsoft Word";
         Notification n = new Notification();
         n.setStatus(0x2196F3, "receiving", "Your job is uploading", "Your print job \"" + jobName + "\" is currently being received from the application. ");
-        n.setVisible(true);
         Thread.sleep(3000);
         n.setStatus(0x4D983E, "sending", "Sending job to printer", "\"" + jobName + "\" has processed and is being sent to 1B18-Southpole.");
         Thread.sleep(3000);
@@ -28,7 +27,6 @@ public class NotificationTest {
 //        Thread.sleep(4000);
         if (n.isClosed()) {
             n = new Notification();
-            n.setVisible(true);
         }
         final int credits = 19, creditsBefore = 71;
         n.setQuota(creditsBefore, credits, "You have " + credits + " pages left", "\"blah_blah_blah.docx - Microsoft Word\" sent to printer 1B18-Right.");

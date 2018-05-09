@@ -1,8 +1,6 @@
 package ca.mcgill.science.tepid.client.interfaces
 
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
-import ca.mcgill.science.tepid.client.models.SessionAuth
+import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.data.PrintJob
 
 /**
@@ -51,31 +49,17 @@ interface EventObserver {
     fun onSessionRequest(attemptCount: Int): SessionAuth?
 
     /**
-     * Handler for any event passed on by the client.
-     * Note that this will occur sequentially and synchronously, so the method should return quickly.
-     * All events should be streamed into one thread, so if you do need more time to handle each request,
-     * consider delegating handlers to only one additional thread with back pressuring
-     * in case the input events come too quickly
+     * Called when everything is ready
+     * Parameters received for initialization will also be passed here
+     */
+    fun initialize(init: Init)
+
+    /**
+     * Handler for any event passed on by the client
      *
-     * @param printJob job currently being handled
-     * @param event    event describing current interaction
-     * @param fail     enum describing current failure; defaults to [Fail.NONE]
-     * if event is not [Event.FAILED]
+     * Note that for any print job if [Processing] is emitted,
+     * One of [Completed] or [Failed] is guaranteed to be called
      */
-    fun onJobReceived(printJob: PrintJob, event: Event, fail: Fail)
-
-    /**
-     * Handler for quota change
-     * Independent from other calls
-     * @param quota new quota value
-     * @param oldQuota old quota value; this is optional! check the value before making animations
-     */
-    fun onQuotaChanged(quota: Int, oldQuota: Int)
-
-    /**
-     * Generic observer for errors
-     * @param error text
-     */
-    fun onErrorReceived(error: String)
+    fun onEvent(event: Event)
 
 }

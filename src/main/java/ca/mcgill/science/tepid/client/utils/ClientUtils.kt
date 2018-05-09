@@ -4,9 +4,9 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.getJobChanges
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
+import ca.mcgill.science.tepid.client.models.*
+import ca.mcgill.science.tepid.models.bindings.PrintError
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
@@ -25,6 +25,16 @@ import javax.ws.rs.ext.WriterInterceptor
 object ClientUtils : WithLogging() {
 
     fun newId() = UUID.randomUUID().toString().replace("-", "")
+
+    val api: ITepid by lazy {
+        TepidApi(Config.SERVER_URL, Config.DEBUG).create {
+            tokenRetriever = Auth::tokenHeader
+        }
+    }
+
+    val apiNoAuth: ITepid by lazy {
+        TepidApi(Config.SERVER_URL, Config.DEBUG).create()
+    }
 
     val hostname: String? by lazy {
         var _p: Process? = null
@@ -101,7 +111,7 @@ object ClientUtils : WithLogging() {
 
         if (putJob?.ok != true) {
             log.error("Could not properly create new job")
-            emitter.notify { it.onErrorReceived("Failed to send job") }
+            emitter.notify(Immediate(job._id ?: "createerror", "Failed to send job"))
             consumeStream(stream)
             return null
         }
@@ -123,10 +133,10 @@ object ClientUtils : WithLogging() {
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
             log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify { it.onErrorReceived("Could not watch print job") }
+            emitter.notify(Immediate(jobId, "Could not watch print job"))
             return
         }
-        emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
+        emitter.notify(Processing(jobId, origJob))
         var processing = true
         for (attempt in 1..5) {
             if (isInterrupted()) {
@@ -142,17 +152,17 @@ object ClientUtils : WithLogging() {
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
-                emitter.notify { it.onErrorReceived("Job could not be located") }
+                emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
                 return
             }
             log.info("Job $job")
             if (job.failed != -1L) {
-                val fail = when (job.error?.toLowerCase()) {
-                    "insufficient quota" -> Fail.INSUFFICIENT_QUOTA
-                    "color disabled" -> Fail.COLOR_DISABLED
-                    else -> Fail.GENERIC
+                val (fail, message) = when (job.error?.toLowerCase()) {
+                    PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA to ""
+                    PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED to ""
+                    else -> Fail.GENERIC to "An error occurred"
                 }
-                emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+                emitter.notify(Failed(jobId, job, fail, message))
                 log.info("Job failed")
                 return
             }
@@ -160,7 +170,8 @@ object ClientUtils : WithLogging() {
                 if (job.processed != -1L && job.destination != null) {
                     processing = false
                     if (job.printed == -1L) {
-                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
+                        val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                        emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
                     }
                 }
             }
@@ -168,8 +179,11 @@ object ClientUtils : WithLogging() {
                 val quota = api.getQuota(user).executeDirect()
                 if (quota != null) {
                     val oldQuota = quota + job.colorPages * 2 + job.pages
-                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
+                    val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                    val destination = destinations[job.destination!!]!!
+                    emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
                 }
+                // todo log failure if quota is null
                 log.info("Job succeeded")
                 return
             }

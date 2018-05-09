@@ -163,7 +163,7 @@ task msi() {
                 println('Done')
             }
         } else {
-            throw new FileNotFoundException('WIX is not installed and added to path')
+            throw new GradleException('WIX is not installed and added to path')
         }
     }
     group 'build'

@@ -1,7 +1,6 @@
 package ca.mcgill.science.tepid.client.interfaces
 
 import ca.mcgill.science.tepid.client.models.*
-import ca.mcgill.science.tepid.models.data.PrintJob
 
 /**
  * Delegation interface to handle client events

@@ -15,7 +15,7 @@ import ca.mcgill.science.tepid.models.data.SessionRequest
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.IOException
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.*
+import java.util.concurrent.Future
 import kotlin.system.exitProcess
 
 class Client private constructor(observers: Array<out EventObserver>) : EventObservable {

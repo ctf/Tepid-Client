@@ -7,15 +7,15 @@ import ca.mcgill.science.tepid.client.interfaces.EventObserver
 import ca.mcgill.science.tepid.client.lpd.LPDServer
 import ca.mcgill.science.tepid.client.models.Immediate
 import ca.mcgill.science.tepid.client.models.Init
+import ca.mcgill.science.tepid.client.models.SessionAuth
 import ca.mcgill.science.tepid.client.printers.PrinterMgmt
-import ca.mcgill.science.tepid.client.utils.Auth
-import ca.mcgill.science.tepid.client.utils.ClientUtils
-import ca.mcgill.science.tepid.client.utils.Config
+import ca.mcgill.science.tepid.client.utils.*
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.models.data.SessionRequest
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.IOException
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.*
 import kotlin.system.exitProcess
 
 class Client private constructor(observers: Array<out EventObserver>) : EventObservable {
@@ -34,11 +34,13 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         create(observers)
     }
 
-    class ClientException(message: String) : RuntimeException(message)
+    private fun <T> async(action: () -> T): Future<T> =
+            executor.submit(action)
+
 
     private fun fail(message: String, e: Exception): Nothing {
         log.error(message, e)
-        observers.forEach(EventObserver::unbind)
+        terminateImpl()
         exitProcess(-1)
     }
 
@@ -49,7 +51,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
 
         addObservers(*observers)
 
-        val queues = apiNoAuth.getQueues().executeDirect() ?: throw ClientException("Could not get queue data")
+        val queues = apiNoAuth.getQueues().executeDirect() ?: fail("Could not get queue data")
 
         log.debug("Found ${queues.size} queues")
 
@@ -79,21 +81,23 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
 
         try {
             LPDServer(if (Config.IS_WINDOWS) 515 else 8515).use { lpd ->
-                lpd.addJobListener { p, input ->
-
-                    p.queueName = queueIds[p.queueName]
-                    log.info("Starting job for ${p.name}")
+                lpd.addJobListener { job, input ->
+                    job.queueName = queueIds[job.queueName]
+                    log.info("Starting job for ${job.name}")
                     val session = getValidSession()
-
                     if (session == null) {
                         notify(Immediate("nosession", "No session found"))
                         return@addJobListener
                     }
 
-                    val watcherThread = ClientUtils.print(p, input, session, this)
-                    if (watcherThread == null) {
+                    log.trace("Printing job ${job.name}")
+
+                    val watcher = ClientUtils.print(job, input, session, this)
+                    if (watcher == null) {
                         log.error("An error occurred during the print process")
+                        return@addJobListener
                     }
+                    async(watcher)
                 }
                 lpd.start()
             }
@@ -102,27 +106,44 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         }
     }
 
-    override fun terminate(): Nothing {
+    private fun terminateImpl() {
+        log.info("Terminating")
         observers.forEach(EventObserver::unbind)
+        executor.shutdownNow()
+    }
+
+    override fun terminate(): Nothing {
+        terminateImpl()
         exitProcess(0)
     }
 
+    /**
+     * Attempts to get a valid session by
+     * 1. Checking the existing auth content
+     * 2. Attempting to get a request from an observer
+     */
     private fun getValidSession(): Session? {
         if (Auth.hasToken) {
-            val session = api.validateToken(Auth.user, Auth.token).executeDirect()
+            val session = api.validateToken(Auth.user, Auth.id).executeDirect()
             if (session?.isValid() == true)
                 return session
-            log.warn("Could not validate old token")
+            log.warn("Could not validate old token ${Auth.token}")
             Auth.clear()
         }
         observers.forEach { obs ->
             for (count in 1..20) {
                 val auth = obs.onSessionRequest(count) ?: break
+                if (auth == SessionAuth.INVALID) {
+                    log.info("Invalid auth; cancelled")
+                    return null
+                }
                 val request = SessionRequest(auth.username, auth.password, true, true)
                 val session = api.getSession(request).executeDirect()
                 if (session != null) {
-                    Auth.set(session.user.shortUser, session.user._id).save()
+                    Auth.set(session.user.shortUser, session._id).save()
                     return session
+                } else {
+                    log.info("Session request was invalid")
                 }
             }
         }

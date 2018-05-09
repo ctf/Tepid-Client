@@ -37,7 +37,7 @@ class PanelObserver : EventObserver {
             Files.copy(Utils.getResourceAsStream(if (Config.IS_WINDOWS) "trayicon/16_loading.png" else "trayicon/32_loading.png"), icon.toPath())
             icon.deleteOnExit()
             systemTray.setImage(icon.absolutePath)
-            systemTray.status = "Loading..."
+            systemTray.status = "Unauthenticated"
             systemTray.menu.add(MenuItem("Quit", {
                 observable.terminate()
             }))

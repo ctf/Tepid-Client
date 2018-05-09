@@ -7,9 +7,12 @@ import ca.mcgill.science.tepid.api.getJobChanges
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
+import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.utils.WithLogging
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.glassfish.jersey.jackson.JacksonFeature
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
@@ -21,6 +24,12 @@ import javax.ws.rs.client.Entity
 import javax.ws.rs.client.WebTarget
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.ext.WriterInterceptor
+
+class ClientException(message: String) : RuntimeException(message)
+
+fun fail(message: String): Nothing = throw ClientException(message)
+
+fun isInterrupted() = Thread.currentThread().isInterrupted
 
 object ClientUtils : WithLogging() {
 
@@ -35,6 +44,8 @@ object ClientUtils : WithLogging() {
     val apiNoAuth: ITepid by lazy {
         TepidApi(Config.SERVER_URL, Config.DEBUG).create()
     }
+
+    val objectMapper = jacksonObjectMapper()
 
     val hostname: String? by lazy {
         var _p: Process? = null
@@ -78,6 +89,9 @@ object ClientUtils : WithLogging() {
         }
     }
 
+    /**
+     * Target used to compress file stream
+     */
     private val tepidServerXz: WebTarget by lazy {
         ClientBuilder.newBuilder()
                 .register(JacksonFeature::class.java)
@@ -94,15 +108,18 @@ object ClientUtils : WithLogging() {
      * @param stream data stream for file
      * @param session session data that must be valid. This will not be tested within this method
      * @param emitter observable to consume status updates
-     * @return watcher thread if everything went well, otherwise null
+     * @return callable returning true if successful and false otherwise
      */
-    fun print(job: PrintJob, stream: InputStream, session: Session, emitter: EventObservable): Thread? {
+    fun print(job: PrintJob, stream: InputStream, session: Session, emitter: EventObservable): (() -> Boolean)? {
         log.debug(job)
 
         log.debug("Creating new print job")
 
+        // todo short user shouldn't be nullable anyways
         val user = session.user.shortUser ?: return null
+
         val authHeader = session.authHeader
+
         val api = TepidApi(Config.SERVER_URL, Config.DEBUG).create {
             tokenRetriever = { authHeader }
         }
@@ -117,58 +134,81 @@ object ClientUtils : WithLogging() {
         }
 
         val jobId = putJob.id
-        val watcherThread = Thread(Runnable { watchJob(jobId, user, api, emitter) }, "JobWatcher $jobId")
-        watcherThread.start()
+
+        log.debug("Sending job data for $jobId")
+
         val response = tepidServerXz.path("jobs").path(jobId)
-                .request(MediaType.TEXT_PLAIN)
-                .header("Authorization", "Token ${session.authHeader}")
+                .request(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Token $authHeader")
                 .put(Entity.entity(stream, "application/x-xz"))
-        log.debug(response.readEntity(String::class.java))
-        return watcherThread
+
+        val responseMessage = response.readEntity(String::class.java)
+        log.debug("Job sent: $responseMessage")
+        val errorResponse = objectMapper.readValue<ErrorResponse>(responseMessage)
+        if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
+            job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
+            return { jobFailed(emitter, job) }
+        }
+        return { watchJob(jobId, user, api, emitter) }
     }
 
-    private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable) {
+    private fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
+        val fail = when (job.error?.toLowerCase()) {
+            PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
+            PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
+            PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
+            else -> Fail.GENERIC
+        }
+        emitter.notify(Failed(job.getId(), job, fail, "")) // todo
+        return false
+    }
+
+    /**
+     * Watch the job
+     * Returns [true] if a success response was captured
+     */
+    private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
         log.info("Starting job watcher")
-        fun isInterrupted() = Thread.currentThread().isInterrupted
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
             log.error("Job $jobId does not exist; cannot watch")
             emitter.notify(Immediate(jobId, "Could not watch print job"))
-            return
+            return false
         }
         emitter.notify(Processing(jobId, origJob))
         var processing = true
         for (attempt in 1..5) {
+            log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
-                log.debug("Watcher interrupted")
-                return
+                log.info("Watcher interrupted")
+                return false
             }
-            try {
-                api.getJobChanges(jobId).executeDirect()
-            } catch (e: Exception) {
-                if (attempt == 1)
-                    log.error("Malformed job change", e)
-            }
+//            try {
+//                api.getJobChanges(jobId).execute().body()
+//            } catch (e: Exception) {
+//                if (attempt == 1)
+//                    log.error("Malformed job change", e)
+//                Thread.sleep(1000)
+//            }
+            Thread.sleep(1000) // todo change
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
-                return
+                return false
             }
-            log.info("Job $job")
-            if (job.failed != -1L) {
-                val (fail, message) = when (job.error?.toLowerCase()) {
-                    PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA to ""
-                    PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED to ""
-                    else -> Fail.GENERIC to "An error occurred"
-                }
-                emitter.notify(Failed(jobId, job, fail, message))
-                log.info("Job failed")
-                return
-            }
+            log.debug("Job snapshot $job")
+            if (job.failed != -1L)
+                return jobFailed(emitter, job)
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
+                    /*
+                     * We will only emit processing once, which is why it is now false
+                     * Note that the next statement may still run as processing is false,
+                     * so if this is already printed, the emitter will notify the observers
+                     */
                     processing = false
+                    log.info("Processing")
                     if (job.printed == -1L) {
                         val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
                         emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
@@ -185,9 +225,10 @@ object ClientUtils : WithLogging() {
                 }
                 // todo log failure if quota is null
                 log.info("Job succeeded")
-                return
+                return true
             }
         }
-        log.info("Finished listening with longpoll")
+        log.error("Finished all loops listening to ${origJob.name}; exiting")
+        return false
     }
 }

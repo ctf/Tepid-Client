@@ -119,16 +119,47 @@ task tepidLinux(type: GradleBuild) {
     tasks = ['copyLibs', 'jar']
 }
 
-task msi(type: Exec) {
+task msi() {
 	dependsOn "tepidWindows"
-    workingDir "$buildDir/libs"
-    environment "PRODUCTVERSION", version
     def WIX = System.getenv ( 'WIX' )
+
     if (WIX) {
         if (version == '') {
             throw new GradleException('Version is blank')
         }
-        commandLine "cmd","/c","wix.bat"
+        exec {
+            workingDir "$buildDir/libs"
+            environment "PRODUCTVERSION", version
+            environment "WIX", WIX
+            commandLine "cmd", "/c", "\"%WIX%\"\\bin\\heat dir libs -ag -dr dir_libs -suid -cg libsDir -sreg -out libsDir.wxs"
+        }
+
+        exec {
+            workingDir "$buildDir/libs"
+            environment "PRODUCTVERSION", version
+            environment "WIX", WIX
+            commandLine "cmd", "/c", "\"%WIX%\"\\bin\\candle -arch x64 libsDir.wxs"
+        }
+        exec {
+            workingDir "$buildDir/libs"
+            environment "PRODUCTVERSION", version
+            environment "WIX", WIX
+            commandLine "cmd", "/c", "\"%WIX%\"\\bin\\candle installer.wxs"
+        }
+        exec {
+            workingDir "$buildDir/libs"
+            environment "PRODUCTVERSION", version
+            environment "WIX", WIX
+            commandLine "cmd", "/c", "\"%WIX%\"\\bin\\light -ext WixUIExtension -cultures:en-us installer.wixobj libsDir.wixobj -b libs -out TEPID-%PRODUCTVERSION%.msi"
+        }
+        exec {
+            workingDir "$buildDir/libs"
+            environment "PRODUCTVERSION", version
+            environment "WIX", WIX
+            commandLine "cmd", "/c", "del installer.wixobj libsDir.wixObj libsDir.wxs TEPID-%PRODUCTVERSION%.wixpdb"
+            println('Done')
+        }
+        //commandLine "cmd","/c","wix.bat"
     }
     else {
         throw new FileNotFoundException('WIX is not installed and added to path')

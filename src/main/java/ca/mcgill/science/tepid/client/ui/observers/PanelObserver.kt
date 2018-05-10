@@ -26,7 +26,12 @@ class PanelObserver : EventObserver {
 
     private val systemTray: SystemTray? by lazy {
         //        SystemTray.FORCE_GTK2 = true
-        SystemTray.get()
+        try {
+            SystemTray.get()
+        } catch (e: NoSuchMethodError) {
+            log.error("Could not find system tray method; removing icon binding", e)
+            null
+        }
     }
 
     override fun bind(observable: EventObservable): Boolean {

@@ -109,6 +109,9 @@ class PanelObserver : EventObserver {
                 notification.setQuota(event.quotaBefore, event.quotaNow,
                         "You have ${event.quotaNow} pages left",
                         "${event.job.shortName} sent to printer ${event.destination.name}.")
+
+                systemTray?.status = "${event.quotaNow} Pages Left"
+
                 try {
                     Thread.sleep(10000)
                 } catch (ignored: InterruptedException) {

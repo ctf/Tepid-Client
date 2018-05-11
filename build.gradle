@@ -45,6 +45,8 @@ dependencies {
     compile "ca.mcgill.tepid-commons:models:$TEPID_COMMONS"
     compile "ca.mcgill.tepid-commons:utils:$TEPID_COMMONS"
 
+    compile "com.bugsnag:bugsnag:3.+"
+
     // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
     compile group: 'com.dorkbox', name: 'SystemTray', version: '3.12'
 

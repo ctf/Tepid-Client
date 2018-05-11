@@ -124,3 +124,8 @@ task msi(type: Exec) {
     commandLine "cmd", "/c", "wix.bat"
     group 'build'
 }
+
+task run(type: JavaExec) {
+    classpath sourceSets.main.runtimeClasspath
+    main = "ca.mcgill.science.tepid.client.Main"
+}

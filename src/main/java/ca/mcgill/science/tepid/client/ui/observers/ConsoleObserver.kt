@@ -2,10 +2,7 @@ package ca.mcgill.science.tepid.client.ui.observers
 
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
-import ca.mcgill.science.tepid.client.models.SessionAuth
-import ca.mcgill.science.tepid.models.data.PrintJob
+import ca.mcgill.science.tepid.client.models.*
 import java.util.*
 
 class ConsoleObserver(private val handleLogin: Boolean = false) : EventObserver {
@@ -29,16 +26,17 @@ class ConsoleObserver(private val handleLogin: Boolean = false) : EventObserver 
         return SessionAuth.create(username, password)
     }
 
-    override fun onJobReceived(printJob: PrintJob, event: Event, fail: Fail) {
-        println("Console: PrintJob $printJob, $event, $fail")
+    override fun initialize(init: Init) {
+        println("Initialized: quota ${init.quota}")
     }
 
-    override fun onQuotaChanged(quota: Int, oldQuota: Int) {
-        println("Console: Quota changed to $quota, old $oldQuota")
-    }
-
-    override fun onErrorReceived(error: String) {
-        System.err.println("Console: Error: $error")
+    override fun onEvent(event: Event) {
+        when (event) {
+            is Processing -> println("Processing ${event.job}")
+            is Sending -> println("Sending ${event.job} to ${event.destination.name}")
+            is Completed -> print("Completed ${event.job} by ${event.destination.name}; quota ${event.quotaBefore} -> ${event.quotaNow}")
+            is Failed -> print("Failed ${event.job}: ${event.error.display} - ${event.message}")
+        }
     }
 
 }

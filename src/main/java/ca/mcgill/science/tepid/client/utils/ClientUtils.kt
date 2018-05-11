@@ -4,8 +4,7 @@ import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
-import ca.mcgill.science.tepid.client.models.Event
-import ca.mcgill.science.tepid.client.models.Fail
+import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
@@ -34,6 +33,16 @@ fun isInterrupted() = Thread.currentThread().isInterrupted
 object ClientUtils : WithLogging() {
 
     fun newId() = UUID.randomUUID().toString().replace("-", "")
+
+    val api: ITepid by lazy {
+        TepidApi(Config.SERVER_URL, Config.DEBUG).create {
+            tokenRetriever = Auth::tokenHeader
+        }
+    }
+
+    val apiNoAuth: ITepid by lazy {
+        TepidApi(Config.SERVER_URL, Config.DEBUG).create()
+    }
 
     val objectMapper = jacksonObjectMapper()
 
@@ -117,7 +126,8 @@ object ClientUtils : WithLogging() {
         val putJob = api.createNewJob(job).executeDirect()
 
         if (putJob?.ok != true) {
-            emitter.notify { it.onErrorReceived("Failed to send job") }
+            log.error("Could not properly create new job")
+            emitter.notify(Immediate(job._id ?: "createerror", "Failed to send job"))
             consumeStream(stream)
             return null
         }
@@ -148,7 +158,7 @@ object ClientUtils : WithLogging() {
             PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
             else -> Fail.GENERIC
         }
-        emitter.notify { it.onJobReceived(job, Event.FAILED, fail) }
+        emitter.notify(Failed(job.getId(), job, fail, "")) // todo
         return false
     }
 
@@ -161,10 +171,10 @@ object ClientUtils : WithLogging() {
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
             log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify { it.onErrorReceived("Could not watch print job") }
+            emitter.notify(Immediate(jobId, "Could not watch print job"))
             return false
         }
-        emitter.notify { it.onJobReceived(origJob, Event.CREATED, Fail.NONE) }
+        emitter.notify(Processing(jobId, origJob))
         var processing = true
         for (attempt in 1..5) {
             log.debug("Watch Attempt $attempt")
@@ -183,7 +193,7 @@ object ClientUtils : WithLogging() {
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
-                emitter.notify { it.onErrorReceived("Job could not be located") }
+                emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
                 return false
             }
             log.debug("Job snapshot $job")
@@ -199,7 +209,8 @@ object ClientUtils : WithLogging() {
                     processing = false
                     log.info("Processing")
                     if (job.printed == -1L) {
-                        emitter.notify { it.onJobReceived(job, Event.PROCESSING, Fail.NONE) }
+                        val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                        emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
                     }
                 }
             }
@@ -207,8 +218,11 @@ object ClientUtils : WithLogging() {
                 val quota = api.getQuota(user).executeDirect()
                 if (quota != null) {
                     val oldQuota = quota + job.colorPages * 2 + job.pages
-                    emitter.notify { it.onQuotaChanged(quota, oldQuota) }
+                    val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                    val destination = destinations[job.destination!!]!!
+                    emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
                 }
+                // todo log failure if quota is null
                 log.info("Job succeeded")
                 return true
             }

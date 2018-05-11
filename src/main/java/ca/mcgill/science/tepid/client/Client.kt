@@ -1,12 +1,12 @@
 package ca.mcgill.science.tepid.client
 
-import ca.mcgill.science.tepid.api.ITepid
-import ca.mcgill.science.tepid.api.TepidApi
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.api.fetch
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
 import ca.mcgill.science.tepid.client.lpd.LPDServer
+import ca.mcgill.science.tepid.client.models.Immediate
+import ca.mcgill.science.tepid.client.models.Init
 import ca.mcgill.science.tepid.client.models.SessionAuth
 import ca.mcgill.science.tepid.client.printers.PrinterMgmt
 import ca.mcgill.science.tepid.client.utils.*
@@ -14,24 +14,21 @@ import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.models.data.SessionRequest
 import ca.mcgill.science.tepid.utils.WithLogging
 import java.io.IOException
-import java.util.concurrent.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
 import kotlin.system.exitProcess
 
 class Client private constructor(observers: Array<out EventObserver>) : EventObservable {
 
-    private val observers = mutableListOf<EventObserver>()
-    val executor: ExecutorService = ThreadPoolExecutor(1, 30, 1, TimeUnit.MINUTES,
-            ArrayBlockingQueue<Runnable>(30, true))
+    override val observers = mutableListOf<EventObserver>()
 
-    private val api: ITepid by lazy {
-        TepidApi(Config.SERVER_URL, Config.DEBUG).create {
-            tokenRetriever = Auth::tokenHeader
-        }
-    }
+    override val executor: ExecutorService = EventObservable.defaultExecutorService()
 
-    private val apiNoAuth: ITepid by lazy {
-        TepidApi(Config.SERVER_URL, Config.DEBUG).create()
-    }
+    private inline val api
+        get() = ClientUtils.api
+
+    private inline val apiNoAuth
+        get() = ClientUtils.apiNoAuth
 
     init {
         create(observers)
@@ -63,8 +60,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->
                 data ?: return@fetch
-                log.info("Initial quota retrieved: $data")
-                notify { it.onQuotaChanged(data, -1) }
+                initialize(Init(data))
             }
         }
 
@@ -90,7 +86,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
                     log.info("Starting job for ${job.name}")
                     val session = getValidSession()
                     if (session == null) {
-                        notify { it.onErrorReceived("No session found") }
+                        notify(Immediate("nosession", "No session found"))
                         return@addJobListener
                     }
 
@@ -119,14 +115,6 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
     override fun terminate(): Nothing {
         terminateImpl()
         exitProcess(0)
-    }
-
-    override fun notify(action: (obs: EventObserver) -> Unit) {
-        observers.forEach {
-            async {
-                action(it)
-            }
-        }
     }
 
     /**

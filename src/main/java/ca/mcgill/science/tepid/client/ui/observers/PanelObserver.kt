@@ -63,14 +63,8 @@ class PanelObserver : EventObserver {
 
     private val notifications: MutableMap<String, Notification> = ConcurrentHashMap()
 
-    private val api: ITepid by lazy {
-        TepidApi(Config.SERVER_URL, Config.DEBUG).create {
-            tokenRetriever = Auth::tokenHeader
-        }
-    }
-
     override fun initialize(init: Init) {
-        systemTray?.status = "${init.quota} Pages Left"
+        updateStatus(init.quota)
     }
 
     private val PrintJob.shortName
@@ -88,6 +82,10 @@ class PanelObserver : EventObserver {
         else
             notifications[id] = notif
         return notif
+    }
+
+    private fun updateStatus(quota: Int) {
+        systemTray?.status = "$quota Pages Left"
     }
 
     override fun onEvent(event: Event) {
@@ -110,7 +108,7 @@ class PanelObserver : EventObserver {
                         "You have ${event.quotaNow} pages left",
                         "${event.job.shortName} sent to printer ${event.destination.name}.")
 
-                systemTray?.status = "${event.quotaNow} Pages Left"
+                updateStatus(event.quotaNow)
 
                 try {
                     Thread.sleep(10000)

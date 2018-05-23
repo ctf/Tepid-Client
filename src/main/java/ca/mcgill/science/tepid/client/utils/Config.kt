@@ -24,6 +24,9 @@ object Config : WithLogging() {
     val PROP_PATH: String
     val USER_NAME: String
 
+    val ACCOUNT_DOMAIN : String
+
+
     init {
         log.info("**********************************")
         log.info("*       Setting up Configs       *")
@@ -43,6 +46,8 @@ object Config : WithLogging() {
 
         PROP_PATH = "$propDir/.tepid"
         log.info("Server url $SERVER_URL")
+
+        ACCOUNT_DOMAIN = get("ACCOUNT_DOMAIN")
 
         USER_NAME = when {
             Auth.hasToken -> Auth.user

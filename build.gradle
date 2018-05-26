@@ -85,7 +85,7 @@ dependencies {
 }
 
 task copyConfigs(type: Copy) {
-    from "$tepid_config_dir"
+    from "$tepid_config_dir/LDAP.properties", "$tepid_config_dir/URL.properties"
     into "config"
 }
 

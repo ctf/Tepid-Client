@@ -84,6 +84,11 @@ dependencies {
 
 }
 
+task copyConfigs(type: Copy) {
+    from "$tepid_config_dir"
+    into "config"
+}
+
 task copyBuilder(type: Copy) {
     into "$buildDir/libs"
     from "files"
@@ -120,11 +125,11 @@ compileTestKotlin {
 }
 
 task tepidWindows(type: GradleBuild) {
-    tasks = ['copyBuilder', 'copyLibsLibs', 'jar']
+    tasks = ['copyBuilder', 'copyLibsLibs', 'copyConfigs', 'jar']
 }
 
 task tepidLinux(type: GradleBuild) {
-    tasks = ['copyLibs', 'jar']
+    tasks = ['copyLibs', 'copyConfigs', 'jar']
 }
 
 task msi(type: Exec) {
@@ -135,7 +140,7 @@ task msi(type: Exec) {
     group 'build'
 }
 
-task run(type: JavaExec) {
+task run(dependsOn: 'copyConfigs', type: JavaExec) {
     classpath sourceSets.main.runtimeClasspath
     main = "ca.mcgill.science.tepid.client.Main"
 }

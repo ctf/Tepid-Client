@@ -1,13 +1,10 @@
 package ca.mcgill.science.tepid.client.utils
 
-import ca.mcgill.science.tepid.models.bindings.TEPID_URL_PRODUCTION
-import ca.mcgill.science.tepid.models.bindings.tepidUrl
 import ca.mcgill.science.tepid.utils.LogUtils
-import ca.mcgill.science.tepid.utils.PropUtils
+import ca.mcgill.science.tepid.utils.PropsLDAP
+import ca.mcgill.science.tepid.utils.PropsURL
 import ca.mcgill.science.tepid.utils.WithLogging
 import org.apache.logging.log4j.Level
-import java.util.*
-
 
 /**
  * Created by Allan Wang on 24/03/2018.
@@ -28,16 +25,14 @@ object Config : WithLogging() {
 
 
     init {
+
         log.info("**********************************")
         log.info("*       Setting up Configs       *")
         log.info("**********************************")
-        val props = PropUtils.loadProps("priv.properties") ?: Properties()
 
-        fun get(key: String, default: String?) = props.getProperty(key, default)
-        fun get(key: String) = get(key, "")
 
-        SERVER_URL = tepidUrl(get("URL"))
-        DEBUG = SERVER_URL != TEPID_URL_PRODUCTION
+        SERVER_URL = PropsURL.SERVER_URL_PRODUCTION
+        DEBUG = PropsURL.SERVER_URL_TESTING != SERVER_URL
 
         if (DEBUG) LogUtils.setLoggingLevel(log, Level.TRACE)
 
@@ -47,7 +42,7 @@ object Config : WithLogging() {
         PROP_PATH = "$propDir/.tepid"
         log.info("Server url $SERVER_URL")
 
-        ACCOUNT_DOMAIN = get("ACCOUNT_DOMAIN")
+        ACCOUNT_DOMAIN = PropsLDAP.ACCOUNT_DOMAIN
 
         USER_NAME = when {
             Auth.hasToken -> Auth.user

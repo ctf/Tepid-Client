@@ -2,6 +2,7 @@ package ca.mcgill.science.tepid.client.ui.text;
 
 import ca.mcgill.science.tepid.client.models.CurrentUser;
 import ca.mcgill.science.tepid.client.models.SessionAuth;
+import ca.mcgill.science.tepid.client.utils.Config;
 import ca.mcgill.science.tepid.common.Utils;
 import in.waffl.q.Promise;
 import in.waffl.q.Q;
@@ -179,7 +180,7 @@ public class PasswordDialog extends JFrame {
         lblDomain.setForeground(new Color(0x0));
         lblDomain.setFont(new Font("Arial", Font.PLAIN, 12));
         contentPane.add(lblDomain);
-        JLabel lblDisclaimer = new JLabel("<html><p>By continuing you agree<br>to the <a href=\"***REMOVED***\">terms & conditions</a></p></html>");
+        JLabel lblDisclaimer = new JLabel("<html><p>By continuing you agree<br>to the <a href=\"" + Config.INSTANCE.getLINK_TOS() +"\">terms & conditions</a></p></html>");
         lblDisclaimer.setBounds(18, 194, 200, 26);
         lblDisclaimer.setForeground(new Color(0x0));
         lblDisclaimer.setFont(new Font("Arial", Font.PLAIN, 10));

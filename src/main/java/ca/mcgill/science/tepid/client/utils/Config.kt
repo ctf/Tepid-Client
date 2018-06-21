@@ -3,6 +3,7 @@ package ca.mcgill.science.tepid.client.utils
 import ca.mcgill.science.tepid.utils.LogUtils
 import ca.mcgill.science.tepid.utils.PropsLDAP
 import ca.mcgill.science.tepid.utils.PropsURL
+import ca.mcgill.science.tepid.utils.PropsAbout
 import ca.mcgill.science.tepid.utils.WithLogging
 import org.apache.logging.log4j.Level
 
@@ -22,6 +23,8 @@ object Config : WithLogging() {
     val USER_NAME: String
 
     val ACCOUNT_DOMAIN : String
+
+    val LINK_TOS : String
 
 
     init {
@@ -43,6 +46,8 @@ object Config : WithLogging() {
         log.info("Server url $SERVER_URL")
 
         ACCOUNT_DOMAIN = PropsLDAP.ACCOUNT_DOMAIN
+
+        LINK_TOS = PropsAbout.LINK_TOS
 
         USER_NAME = when {
             Auth.hasToken -> Auth.user

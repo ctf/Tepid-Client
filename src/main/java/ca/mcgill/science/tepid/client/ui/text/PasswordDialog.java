@@ -191,7 +191,7 @@ public class PasswordDialog extends JFrame {
             public void mouseReleased(MouseEvent e) {
                 if (Desktop.isDesktopSupported()) {
                     try {
-                        Desktop.getDesktop().browse(new URI("***REMOVED***"));
+                        Desktop.getDesktop().browse(new URI(Config.INSTANCE.getLINK_TOS()));
                     } catch (IOException | URISyntaxException e1) {
                         e1.printStackTrace();
                     }

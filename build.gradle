@@ -7,6 +7,16 @@ apply plugin: 'idea'
 sourceCompatibility = JVM_TARGET
 targetCompatibility = JVM_TARGET
 
+ext {
+    // can be passed with -Ptepid_config_dir=CONFIG_DIR, or set in an environment variable "tepid_config_dir
+    if (! project.hasProperty('tepid_config_dir')){
+        tepid_config_dir = "$System.env.tepid_config_dir"
+    }
+    if (! project.hasProperty('tepid_config_dir')){
+        throw new GradleException('tepid_config_dir not found')
+    }
+}
+
 buildscript {
     repositories {
         jcenter()
@@ -74,6 +84,11 @@ dependencies {
 
 }
 
+task copyConfigs(type: Copy) {
+    from "$tepid_config_dir/LDAP.properties", "$tepid_config_dir/URL.properties"
+    into "config"
+}
+
 task copyBuilder(type: Copy) {
     into "$buildDir/libs"
     from "files"
@@ -110,11 +125,11 @@ compileTestKotlin {
 }
 
 task tepidWindows(type: GradleBuild) {
-    tasks = ['copyBuilder', 'copyLibsLibs', 'jar']
+    tasks = ['copyBuilder', 'copyLibsLibs', 'copyConfigs', 'jar']
 }
 
 task tepidLinux(type: GradleBuild) {
-    tasks = ['copyLibs', 'jar']
+    tasks = ['copyLibs', 'copyConfigs', 'jar']
 }
 
 task msi(type: Exec) {
@@ -125,7 +140,7 @@ task msi(type: Exec) {
     group 'build'
 }
 
-task run(type: JavaExec) {
+task run(dependsOn: 'copyConfigs', type: JavaExec) {
     classpath sourceSets.main.runtimeClasspath
     main = "ca.mcgill.science.tepid.client.Main"
 }

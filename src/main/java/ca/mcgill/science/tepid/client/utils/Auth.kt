@@ -1,9 +1,9 @@
 package ca.mcgill.science.tepid.client.utils
 
+import ca.allanwang.kit.props.PropHolder
+import ca.allanwang.kit.props.PropUtils
 import ca.mcgill.science.tepid.models.data.Session
-import ca.mcgill.science.tepid.utils.PropUtils
 import ca.mcgill.science.tepid.utils.WithLogging
-import java.util.*
 
 object Auth : WithLogging() {
 
@@ -24,10 +24,10 @@ object Auth : WithLogging() {
 
     private var tokenUser: String? = null
     private var tokenId: String? = null
-    private val props: Properties = PropUtils.loadProps(Config.PROP_PATH) ?: Properties()
+    private val props: PropHolder = PropHolder(Config.PROP_PATH)
 
     init {
-        val token = props.getProperty("token")?.split(":")
+        val token = props.get("token")?.split(":")
         if (token?.size == 2) {
             tokenUser = token[0]
             tokenId = token[1]
@@ -42,8 +42,8 @@ object Auth : WithLogging() {
 
     fun save() {
         log.trace("Saving")
-        props.setProperty("token", token)
-        PropUtils.saveProps(props, Config.PROP_PATH, "Tepid")
+        props.props.set("token", token)
+        PropUtils.saveProps(props.props, Config.PROP_PATH, "Tepid")
     }
 
     fun clear() {

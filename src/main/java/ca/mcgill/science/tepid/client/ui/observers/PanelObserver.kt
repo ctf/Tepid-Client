@@ -58,7 +58,7 @@ class PanelObserver : EventObserver {
     }
 
     override fun onSessionRequest(attemptCount: Int): SessionAuth? {
-        return PasswordDialog.prompt("mail.mcgill.ca").result
+        return PasswordDialog.prompt(Config.ACCOUNT_DOMAIN).result
     }
 
     private val notifications: MutableMap<String, Notification> = ConcurrentHashMap()

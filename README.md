@@ -2,6 +2,14 @@
 
 Client program to bind printers and send jobs to TEPID-server
 
+### Test
+
+Client is able to run directly from the main method, 
+as all necessary bindings are done at runtime.
+
+You may call the main method at `ca.mcgill.science.tepid.client.Main`,
+or run `gradlew run` to launch the main method from the gradle wrapper.
+
 ### Build
 
 You may look at the gradle panel for a list of valid commands.
@@ -14,6 +22,7 @@ Notable commands:
 
 | Command | Description |
 | --- | --- |
+| `run` | Launches the main method |
 | `clean` | Delete `[out]` |
 | `jar` | Build jar file in `[out]` |
 | `tepidWindows` | Build jar and copy all files (including exe and ini) to $buildDir/libs` |

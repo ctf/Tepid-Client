@@ -6,7 +6,6 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
-import ca.mcgill.science.tepid.models.data.Destination
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
@@ -128,7 +127,7 @@ object ClientUtils : WithLogging() {
 
         if (putJob?.ok != true) {
             log.error("Could not properly create new job")
-            emitter.notify(Immediate(job._id ?: "createerror", "Failed to send job"))
+            emitter.notify(Failed(job._id ?: "createerror", null,  Fail.IMMEDIATE, "Failed to send job"))
             consumeStream(stream)
             return null
         }
@@ -199,6 +198,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
             Thread.sleep(200) // todo change
 
 
+
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
@@ -251,13 +251,13 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
     }
 
     private fun getJob (jobId: String): PrintJob?{
-        val origJob = api.getJob(jobId).executeDirect()
-        if (origJob == null) {
+        val job = api.getJob(jobId).executeDirect()
+        if (job == null) {
             log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify(Immediate(jobId, "Could not watch print job"))
+            emitter.notify(Failed(jobId, null,  Fail.IMMEDIATE, "Could not watch print job"))
             return null
         }
-        return origJob
+        return job
     }
 
 }

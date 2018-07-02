@@ -174,6 +174,11 @@ object ClientUtils : WithLogging() {
 
 class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() {
 
+    enum class State {
+        None, Received, Started, Processed, Printed, Failed
+    }
+
+    var state:State = State.None
 
     fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")

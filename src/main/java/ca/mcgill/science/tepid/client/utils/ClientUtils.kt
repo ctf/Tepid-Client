@@ -198,13 +198,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
             Thread.sleep(200) // todo change
 
 
-
-            val job = api.getJob(jobId).executeDirect()
-            if (job == null) {
-                log.error("Job not found; token probably changed")
-                emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
-                return false
-            }
+            val job = getJob(jobId) ?: return false
 
             log.debug("Job snapshot $job")
 
@@ -253,8 +247,8 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
     private fun getJob (jobId: String): PrintJob?{
         val job = api.getJob(jobId).executeDirect()
         if (job == null) {
-            log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify(Failed(jobId, null,  Fail.IMMEDIATE, "Could not watch print job"))
+            log.error("Job $jobId could not be found; cannot watch")
+            emitter.notify(Failed(jobId, null,  Fail.IMMEDIATE, "Could not find print job on server"))
             return null
         }
         return job

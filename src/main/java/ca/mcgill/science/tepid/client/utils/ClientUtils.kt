@@ -6,6 +6,7 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
+import ca.mcgill.science.tepid.models.data.Destination
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
@@ -151,7 +152,7 @@ object ClientUtils : WithLogging() {
         return { watchJob(jobId, user, api, emitter) }
     }
 
-    private fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
+    internal fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
         val fail = when (job.error?.toLowerCase()) {
             PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
             PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
@@ -167,6 +168,12 @@ object ClientUtils : WithLogging() {
      * Returns [true] if a success response was captured
      */
     private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
+        return JobWatcher.watchJob(jobId, user, api, emitter)
+    }
+}
+
+object JobWatcher : WithLogging() {
+    fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
         log.info("Starting job watcher")
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {
@@ -198,7 +205,7 @@ object ClientUtils : WithLogging() {
             }
             log.debug("Job snapshot $job")
             if (job.failed != -1L)
-                return jobFailed(emitter, job)
+                return ClientUtils.jobFailed(emitter, job)
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
                     /*

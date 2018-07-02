@@ -168,12 +168,14 @@ object ClientUtils : WithLogging() {
      * Returns [true] if a success response was captured
      */
     private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
-        return JobWatcher.watchJob(jobId, user, api, emitter)
+        return JobWatcher(api, emitter).watchJob(jobId, user)
     }
 }
 
-object JobWatcher : WithLogging() {
-    fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
+class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() {
+
+
+    fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
         val origJob = api.getJob(jobId).executeDirect()
         if (origJob == null) {

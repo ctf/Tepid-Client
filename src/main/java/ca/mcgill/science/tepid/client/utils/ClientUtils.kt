@@ -173,18 +173,17 @@ object ClientUtils : WithLogging() {
 
 class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() {
 
-    enum class State {
-        None, Received, Started, Processed, Printed, Failed
-    }
+    lateinit var status:Status
 
-    var state:State = State.None
 
     fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
         val origJob = getJob(jobId) ?: return false
+
         emitter.notify(Processing(jobId, origJob))
-        
-        var processing = true
+        status = Status.SENDING
+
+        var reportProcessing = true
 
 
         for (attempt in 1..5) {
@@ -207,14 +206,14 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 return ClientUtils.jobFailed(emitter, job)
 
 //====If Processing============================================
-            if (processing) {
+            if (reportProcessing) {
                 if (job.processed != -1L && job.destination != null) {
                     /*
                      * We will only emit processing once, which is why it is now false
                      * Note that the next statement may still run as processing is false,
                      * so if this is already printed, the emitter will notify the observers
                      */
-                    processing = false
+                    reportProcessing = false
                     log.info("Processing")
                     if (job.printed == -1L) {
                         val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
@@ -224,7 +223,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
             }
 
 //====If Processed but not printed=============================
-            if (!processing && job.printed == -1L) {
+            if (!reportProcessing && job.printed == -1L) {
                 val quota = api.getQuota(user).executeDirect()
                 if (quota != null) {
                     val oldQuota = quota + job.colorPages * 2 + job.pages

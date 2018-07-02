@@ -177,12 +177,8 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
 
     fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
-        val origJob = api.getJob(jobId).executeDirect()
-        if (origJob == null) {
-            log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify(Immediate(jobId, "Could not watch print job"))
-            return false
-        }
+        val origJob = getJob(jobId) ?: return false
+
         emitter.notify(Processing(jobId, origJob))
         var processing = true
         for (attempt in 1..5) {
@@ -239,4 +235,17 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }
+
+    private fun getJob (jobId: String): PrintJob?{
+        val origJob = api.getJob(jobId).executeDirect()
+        if (origJob == null) {
+            log.error("Job $jobId does not exist; cannot watch")
+            emitter.notify(Immediate(jobId, "Could not watch print job"))
+            return null
+        }
+        return origJob
+    }
+
 }
+
+

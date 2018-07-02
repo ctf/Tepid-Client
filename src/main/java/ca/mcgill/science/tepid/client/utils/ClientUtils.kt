@@ -183,32 +183,36 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
     fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
         val origJob = getJob(jobId) ?: return false
-
         emitter.notify(Processing(jobId, origJob))
+        
         var processing = true
+
+
         for (attempt in 1..5) {
+//======Setup==================================================
             log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
                 log.info("Watcher interrupted")
                 return false
             }
-//            try {
-//                api.getJobChanges(jobId).execute().body()
-//            } catch (e: Exception) {
-//                if (attempt == 1)
-//                    log.error("Malformed job change", e)
-//                Thread.sleep(1000)
-//            }
-            Thread.sleep(1000) // todo change
+
+            Thread.sleep(200) // todo change
+
+
             val job = api.getJob(jobId).executeDirect()
             if (job == null) {
                 log.error("Job not found; token probably changed")
                 emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
                 return false
             }
+
             log.debug("Job snapshot $job")
+
+//====If Failed================================================
             if (job.failed != -1L)
                 return ClientUtils.jobFailed(emitter, job)
+
+//====If Processing============================================
             if (processing) {
                 if (job.processed != -1L && job.destination != null) {
                     /*
@@ -224,6 +228,8 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                     }
                 }
             }
+
+//====If Processed but not printed=============================
             if (!processing && job.printed == -1L) {
                 val quota = api.getQuota(user).executeDirect()
                 if (quota != null) {
@@ -233,10 +239,13 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                     emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
                 }
                 // todo log failure if quota is null
+//====If Sucsessful============================================
                 log.info("Job succeeded")
                 return true
             }
         }
+
+//====If timeout===============================================
         log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }

@@ -174,7 +174,8 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         val origJob = getJob(jobId) ?: return false
 
         emitter.notify(Processing(jobId, origJob))
-        status = Status.SENDING
+        status = Status.PROCESSING
+        log.info("Processing")
 
         var reportProcessing = true
 
@@ -207,7 +208,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                      * so if this is already printed, the emitter will notify the observers
                      */
                     reportProcessing = false
-                    log.info("Processing")
+
                     if (job.printed == -1L) {
                         val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
                         emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null

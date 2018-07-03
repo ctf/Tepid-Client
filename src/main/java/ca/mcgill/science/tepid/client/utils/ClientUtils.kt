@@ -146,20 +146,18 @@ object ClientUtils : WithLogging() {
         val errorResponse = objectMapper.readValue<ErrorResponse>(responseMessage)
         if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
             job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
-            return { jobFailed(emitter, job) }
+            return fun():Boolean {
+                val fail = when (job.error?.toLowerCase()) {
+                PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
+                PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
+                PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
+                else -> Fail.GENERIC
+                }
+                emitter.notify(Failed(job.getId(), job, fail, "")) // todo
+                return false
+            }
         }
         return { watchJob(jobId, user, api, emitter) }
-    }
-
-    internal fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
-        val fail = when (job.error?.toLowerCase()) {
-            PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
-            PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
-            PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
-            else -> Fail.GENERIC
-        }
-        emitter.notify(Failed(job.getId(), job, fail, "")) // todo
-        return false
     }
 
     /**
@@ -202,8 +200,16 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
             log.debug("Job snapshot $job")
 
 //====If Failed================================================
-            if (job.failed != -1L)
-                return ClientUtils.jobFailed(emitter, job)
+            if (job.failed != -1L){
+                val fail = when (job.error?.toLowerCase()) {
+                    PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
+                    PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
+                    PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
+                    else -> Fail.GENERIC
+                }
+                emitter.notify(Failed(job.getId(), job, fail, "")) // todo
+                return false
+            }
 
 //====If Processing============================================
             if (reportProcessing) {

@@ -147,12 +147,7 @@ object ClientUtils : WithLogging() {
         if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
             job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
             return fun():Boolean {
-                val fail = when (job.error?.toLowerCase()) {
-                PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
-                PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
-                PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
-                else -> Fail.GENERIC
-                }
+                val fail = Fail.fromText(job.error!!) //job.fail will set this as non-null
                 emitter.notify(Failed(job.getId(), job, fail, "")) // todo
                 return false
             }
@@ -193,20 +188,12 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
             }
 
             Thread.sleep(200) // todo change
-
-
             val job = getJob(jobId) ?: return false
-
             log.debug("Job snapshot $job")
 
 //====If Failed================================================
             if (job.failed != -1L){
-                val fail = when (job.error?.toLowerCase()) {
-                    PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
-                    PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
-                    PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
-                    else -> Fail.GENERIC
-                }
+                val fail = Fail.fromText(job.error ?: "") //might actually null, but still failed
                 emitter.notify(Failed(job.getId(), job, fail, "")) // todo
                 return false
             }

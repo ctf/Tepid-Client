@@ -210,7 +210,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                     reportProcessing = false
 
                     if (job.printed == -1L) {
-                        val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                        val destinations = getDestinations()
                         emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
                     }
                 }
@@ -221,7 +221,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 val quota = api.getQuota(user).executeDirect()
                 if (quota != null) {
                     val oldQuota = quota + job.colorPages * 2 + job.pages
-                    val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+                    val destinations = getDestinations()
                     val destination = destinations[job.destination!!]!!
                     emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
                 }
@@ -236,6 +236,8 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }
+
+    private fun getDestinations() = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
 
     private fun getJob (jobId: String): PrintJob?{
         val job = api.getJob(jobId).executeDirect()

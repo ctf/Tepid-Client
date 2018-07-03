@@ -6,6 +6,7 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
+import ca.mcgill.science.tepid.models.data.Destination
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
@@ -178,9 +179,6 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         status = Status.PROCESSING
         log.info("Processing")
 
-        var reportProcessing = true
-
-
         for (attempt in 1..10) {
 //======Setup==================================================
             log.debug("Watch Attempt $attempt")
@@ -205,8 +203,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 //transition to sending
                 if (job.processed != -1L && job.destination != null){
                     status = Status.SENDING
-                    val destinations = getDestinations()
-                    emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
+                    emitter.notify(Sending(jobId, job, getDestinations()[job.destination!!]!!)) // todo notify error if null
                 }
             }
 
@@ -217,11 +214,11 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                     val quota = api.getQuota(user).executeDirect()
                     if (quota != null) {
                         val oldQuota = quota + job.colorPages * 2 + job.pages
-                        val destinations = getDestinations()
-                        val destination = destinations[job.destination!!]!!
-                        emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
+                        emitter.notify(Completed(jobId, job, getDestinations()[job.destination!!]!!, oldQuota, quota))
                     }
-                    // todo log failure if quota is null
+                    else{
+                        log.warn("Could not fetch quota; cannot display quota counter")
+                    }
                 }
             }
 
@@ -236,7 +233,9 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         return false
     }
 
-    private fun getDestinations() = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
+    private fun getDestinations(): Map<String, Destination> {
+        return api.getDestinations().executeDirect() ?: emptyMap()
+    }
 
     private fun getJob (jobId: String): PrintJob?{
         val job = api.getJob(jobId).executeDirect()

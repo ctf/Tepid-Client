@@ -170,7 +170,9 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
 
     lateinit var status:Status
 
-
+    /**
+     * Notifications update on the transition between Statuses so they only fire once.
+     */
     fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
         val origJob = getJob(jobId) ?: return false

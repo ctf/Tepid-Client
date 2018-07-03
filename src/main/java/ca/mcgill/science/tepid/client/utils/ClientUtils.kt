@@ -17,6 +17,7 @@ import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.lang.Math.pow
 import java.util.*
 import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.client.Entity
@@ -180,7 +181,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
         var reportProcessing = true
 
 
-        for (attempt in 1..5) {
+        for (attempt in 1..10) {
 //======Setup==================================================
             log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
@@ -188,7 +189,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 return false
             }
 
-            Thread.sleep(200) // todo change
+            Thread.sleep((1000 * pow(1.15, attempt.toDouble())).toLong())
             val job = getJob(jobId) ?: return false
             log.debug("Job snapshot $job")
 

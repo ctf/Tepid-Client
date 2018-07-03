@@ -5,9 +5,7 @@ import ca.mcgill.science.tepid.api.fetch
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.interfaces.EventObserver
 import ca.mcgill.science.tepid.client.lpd.LPDServer
-import ca.mcgill.science.tepid.client.models.Immediate
-import ca.mcgill.science.tepid.client.models.Init
-import ca.mcgill.science.tepid.client.models.SessionAuth
+import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.client.printers.PrinterMgmt
 import ca.mcgill.science.tepid.client.utils.*
 import ca.mcgill.science.tepid.models.data.Session
@@ -86,7 +84,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
                     log.info("Starting job for ${job.name}")
                     val session = getValidSession()
                     if (session == null) {
-                        notify(Immediate("nosession", "No session found"))
+                        notify(Failed("nosession", null,  Fail.IMMEDIATE, "No session found"))
                         return@addJobListener
                     }
 

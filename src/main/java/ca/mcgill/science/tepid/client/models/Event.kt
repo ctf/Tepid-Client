@@ -13,6 +13,4 @@ class Completed(val id: String, val job: PrintJob, val destination: Destination,
 
 open class Failed(val id: String, val job: PrintJob?, val error: Fail, val message: String) : Event()
 
-class Immediate(id: String, message: String) : Failed(id, null, Fail.IMMEDIATE, message)
-
 class Init(val quota: Int)

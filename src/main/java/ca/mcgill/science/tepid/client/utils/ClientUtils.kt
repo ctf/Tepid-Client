@@ -6,6 +6,7 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.bindings.PrintError
+import ca.mcgill.science.tepid.models.data.Destination
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
@@ -17,6 +18,7 @@ import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.lang.Math.pow
 import java.util.*
 import javax.ws.rs.client.ClientBuilder
 import javax.ws.rs.client.Entity
@@ -127,7 +129,7 @@ object ClientUtils : WithLogging() {
 
         if (putJob?.ok != true) {
             log.error("Could not properly create new job")
-            emitter.notify(Immediate(job._id ?: "createerror", "Failed to send job"))
+            emitter.notify(Failed(job._id ?: "createerror", null,  Fail.IMMEDIATE, "Failed to send job"))
             consumeStream(stream)
             return null
         }
@@ -146,20 +148,13 @@ object ClientUtils : WithLogging() {
         val errorResponse = objectMapper.readValue<ErrorResponse>(responseMessage)
         if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
             job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
-            return { jobFailed(emitter, job) }
+            return fun():Boolean {
+                val fail = Fail.fromText(job.error!!) //job.fail will set this as non-null
+                emitter.notify(Failed(job.getId(), job, fail, "")) // todo
+                return false
+            }
         }
         return { watchJob(jobId, user, api, emitter) }
-    }
-
-    private fun jobFailed(emitter: EventObservable, job: PrintJob): Boolean {
-        val fail = when (job.error?.toLowerCase()) {
-            PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
-            PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
-            PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
-            else -> Fail.GENERIC
-        }
-        emitter.notify(Failed(job.getId(), job, fail, "")) // todo
-        return false
     }
 
     /**
@@ -167,67 +162,93 @@ object ClientUtils : WithLogging() {
      * Returns [true] if a success response was captured
      */
     private fun watchJob(jobId: String, user: String, api: ITepid, emitter: EventObservable): Boolean {
+        return JobWatcher(api, emitter).watchJob(jobId, user)
+    }
+}
+
+class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() {
+
+    lateinit var status:Status
+
+    /**
+     * Notifications update on the transition between Statuses so they only fire once.
+     */
+    fun watchJob(jobId: String, user: String): Boolean {
         log.info("Starting job watcher")
-        val origJob = api.getJob(jobId).executeDirect()
-        if (origJob == null) {
-            log.error("Job $jobId does not exist; cannot watch")
-            emitter.notify(Immediate(jobId, "Could not watch print job"))
-            return false
-        }
+        val origJob = getJob(jobId) ?: return false
+
         emitter.notify(Processing(jobId, origJob))
-        var processing = true
-        for (attempt in 1..5) {
+        status = Status.PROCESSING
+        log.info("Processing")
+
+        for (attempt in 1..10) {
+//======Setup==================================================
             log.debug("Watch Attempt $attempt")
             if (isInterrupted()) {
                 log.info("Watcher interrupted")
                 return false
             }
-//            try {
-//                api.getJobChanges(jobId).execute().body()
-//            } catch (e: Exception) {
-//                if (attempt == 1)
-//                    log.error("Malformed job change", e)
-//                Thread.sleep(1000)
-//            }
-            Thread.sleep(1000) // todo change
-            val job = api.getJob(jobId).executeDirect()
-            if (job == null) {
-                log.error("Job not found; token probably changed")
-                emitter.notify(Failed(jobId, null, Fail.GENERIC, "Job could not be located"))
+
+            Thread.sleep((1000 * pow(1.15, attempt.toDouble())).toLong())
+            val job = getJob(jobId) ?: return false
+            log.debug("Job snapshot $job")
+
+//====If Failed================================================
+            if (job.failed != -1L){
+                val fail = Fail.fromText(job.error ?: "") //might actually null, but still failed
+                emitter.notify(Failed(job.getId(), job, fail, "")) // todo: add help message text from screensaver's config
                 return false
             }
-            log.debug("Job snapshot $job")
-            if (job.failed != -1L)
-                return jobFailed(emitter, job)
-            if (processing) {
-                if (job.processed != -1L && job.destination != null) {
-                    /*
-                     * We will only emit processing once, which is why it is now false
-                     * Note that the next statement may still run as processing is false,
-                     * so if this is already printed, the emitter will notify the observers
-                     */
-                    processing = false
-                    log.info("Processing")
-                    if (job.printed == -1L) {
-                        val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
-                        emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
+
+//====Normal Status Processing=================================
+            if (status == Status.PROCESSING){
+                //transition to sending
+                if (job.processed != -1L && job.destination != null){
+                    status = Status.SENDING
+                    emitter.notify(Sending(jobId, job, getDestinations()[job.destination!!]!!)) // todo notify error if null
+                }
+            }
+
+            if (status == Status.SENDING){
+                //transition to printed
+                if (job.printed != -1L){
+                    status = Status.PRINTED
+                    val quota = api.getQuota(user).executeDirect()
+                    if (quota != null) {
+                        val oldQuota = quota + job.colorPages * 2 + job.pages
+                        emitter.notify(Completed(jobId, job, getDestinations()[job.destination!!]!!, oldQuota, quota))
+                    }
+                    else{
+                        log.warn("Could not fetch quota; cannot display quota counter")
                     }
                 }
             }
-            if (!processing && job.printed == -1L) {
-                val quota = api.getQuota(user).executeDirect()
-                if (quota != null) {
-                    val oldQuota = quota + job.colorPages * 2 + job.pages
-                    val destinations = api.getDestinations().executeDirect() ?: emptyMap() // todo log error
-                    val destination = destinations[job.destination!!]!!
-                    emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
-                }
-                // todo log failure if quota is null
+
+            if (status == Status.PRINTED){
                 log.info("Job succeeded")
                 return true
             }
         }
+
+//====If timeout===============================================
         log.error("Finished all loops listening to ${origJob.name}; exiting")
         return false
     }
+
+    private fun getDestinations(): Map<String, Destination> {
+        return api.getDestinations().executeDirect() ?: emptyMap()
+    }
+
+    private fun getJob (jobId: String): PrintJob?{
+        val job = api.getJob(jobId).executeDirect()
+        if (job == null) {
+            log.error("Job $jobId could not be found; cannot watch")
+            emitter.notify(Failed(jobId, null,  Fail.IMMEDIATE, "Could not find print job on server"))
+            return null
+        }
+        return job
+    }
+
 }
+
+

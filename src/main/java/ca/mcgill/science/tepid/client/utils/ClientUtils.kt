@@ -199,34 +199,32 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 return false
             }
 
-//====If Processing============================================
-            if (reportProcessing) {
-                if (job.processed != -1L && job.destination != null) {
-                    /*
-                     * We will only emit processing once, which is why it is now false
-                     * Note that the next statement may still run as processing is false,
-                     * so if this is already printed, the emitter will notify the observers
-                     */
-                    reportProcessing = false
-
-                    if (job.printed == -1L) {
-                        val destinations = getDestinations()
-                        emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
-                    }
+//====Normal Status Processing=================================
+            if (status == Status.PROCESSING){
+                //transition to sending
+                if (job.processed != -1L && job.destination != null){
+                    status = Status.SENDING
+                    val destinations = getDestinations()
+                    emitter.notify(Sending(jobId, job, destinations[job.destination!!]!!)) // todo notify error if null
                 }
             }
 
-//====If Processed but not printed=============================
-            if (!reportProcessing && job.printed == -1L) {
-                val quota = api.getQuota(user).executeDirect()
-                if (quota != null) {
-                    val oldQuota = quota + job.colorPages * 2 + job.pages
-                    val destinations = getDestinations()
-                    val destination = destinations[job.destination!!]!!
-                    emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
+            if (status == Status.SENDING){
+                //transition to printed
+                if (job.printed != -1L){
+                    status = Status.PRINTED
+                    val quota = api.getQuota(user).executeDirect()
+                    if (quota != null) {
+                        val oldQuota = quota + job.colorPages * 2 + job.pages
+                        val destinations = getDestinations()
+                        val destination = destinations[job.destination!!]!!
+                        emitter.notify(Completed(jobId, job, destination, oldQuota, quota))
+                    }
+                    // todo log failure if quota is null
                 }
-                // todo log failure if quota is null
-//====If Sucsessful============================================
+            }
+
+            if (status == Status.PRINTED){
                 log.info("Job succeeded")
                 return true
             }

@@ -194,7 +194,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
 //====If Failed================================================
             if (job.failed != -1L){
                 val fail = Fail.fromText(job.error ?: "") //might actually null, but still failed
-                emitter.notify(Failed(job.getId(), job, fail, "")) // todo
+                emitter.notify(Failed(job.getId(), job, fail, "")) // todo: add help message text from screensaver's config
                 return false
             }
 

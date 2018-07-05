@@ -34,7 +34,7 @@ object Config : WithLogging() {
         log.info("**********************************")
 
 
-        SERVER_URL = PropsURL.SERVER_URL_PRODUCTION
+        SERVER_URL = PropsURL.SERVER_URL_PRODUCTION ?: ""
         DEBUG = PropsURL.SERVER_URL_TESTING != SERVER_URL
 
         if (DEBUG) LogUtils.setLoggingLevel(log, Level.TRACE)
@@ -45,9 +45,9 @@ object Config : WithLogging() {
         PROP_PATH = "$propDir/.tepid"
         log.info("Server url $SERVER_URL")
 
-        ACCOUNT_DOMAIN = PropsLDAP.ACCOUNT_DOMAIN
+        ACCOUNT_DOMAIN = PropsLDAP.ACCOUNT_DOMAIN ?: ""
 
-        LINK_TOS = PropsAbout.LINK_TOS
+        LINK_TOS = PropsAbout.LINK_TOS ?: ""
 
         USER_NAME = when {
             Auth.hasToken -> Auth.user

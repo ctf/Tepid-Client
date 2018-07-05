@@ -29,6 +29,14 @@ buildscript {
     }
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDirs "src/main/resources", "config"
+        }
+    }
+}
+
 apply plugin: 'ca.mcgill.science.tepid.commons'
 
 repositories {
@@ -110,6 +118,9 @@ task commandLinux(type: Exec) {
 }
 
 jar {
+    from('config') {
+        include '*.properties'
+    }
     baseName = 'tepid'
     manifest {
         attributes 'Main-Class': 'ca.mcgill.science.tepid.client.Main'

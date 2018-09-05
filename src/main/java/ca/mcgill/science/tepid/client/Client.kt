@@ -54,6 +54,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         log.debug("Found ${queues.size} queues")
 
         val manager = PrinterMgmt.printerManagement
+        manager.cleanPrinters()
 
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->

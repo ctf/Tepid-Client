@@ -1,10 +1,6 @@
 package ca.mcgill.science.tepid.client.utils
 
-import ca.mcgill.science.tepid.utils.LogUtils
-import ca.mcgill.science.tepid.utils.PropsLDAP
-import ca.mcgill.science.tepid.utils.PropsURL
-import ca.mcgill.science.tepid.utils.PropsAbout
-import ca.mcgill.science.tepid.utils.WithLogging
+import ca.mcgill.science.tepid.utils.*
 import org.apache.logging.log4j.Level
 
 /**
@@ -32,7 +28,6 @@ object Config : WithLogging() {
         log.info("**********************************")
         log.info("*       Setting up Configs       *")
         log.info("**********************************")
-
 
         SERVER_URL = PropsURL.SERVER_URL_PRODUCTION ?: ""
         DEBUG = PropsURL.SERVER_URL_TESTING != SERVER_URL

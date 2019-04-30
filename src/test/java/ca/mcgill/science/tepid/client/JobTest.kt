@@ -26,14 +26,14 @@ class JobTest {
     @Test
     fun test() {
         val job = PrintJob(name = TestUtils.testUser,
-                queueName = Room._1B17.toString(),
+                queueName = "1B16",
                 originalHost = "Unit Test")
         val watchThread = ClientUtils.print(job,
                 FileInputStream(File(TestUtils.testFile)),
                 TestUtils.testSession ?: fail("Invalid session"),
                 emitter) ?: fail("Failed to bind watch thread")
         println(System.currentTimeMillis())
-        watchThread.join()
+        watchThread()
         println(System.currentTimeMillis())
     }
 

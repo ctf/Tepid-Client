@@ -5,7 +5,6 @@ import ca.mcgill.science.tepid.client.internal.TestEventObservable
 import ca.mcgill.science.tepid.client.internal.TestUtils
 import ca.mcgill.science.tepid.client.utils.ClientUtils
 import ca.mcgill.science.tepid.models.data.PrintJob
-import ca.mcgill.science.tepid.models.enums.Room
 import ca.mcgill.science.tepid.utils.WithLogging
 import org.junit.Assume
 import org.junit.Test
@@ -17,7 +16,7 @@ class JobTest {
 
     companion object : WithLogging() {
         init {
-            Assume.assumeTrue("Testing job test", TestUtils.hasTestUser && TestUtils.testFile != null)
+            Assume.assumeTrue("Testing job test", TestUtils.hasTestUser)
         }
 
         val emitter: EventObservable by lazy { TestEventObservable() }

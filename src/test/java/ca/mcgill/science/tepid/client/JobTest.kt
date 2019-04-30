@@ -29,7 +29,9 @@ class JobTest {
                 queueName = "1B16",
                 originalHost = "Unit Test")
         val watchThread = ClientUtils.print(job,
-                FileInputStream(File(TestUtils.testFile)),
+                FileInputStream(File(
+                        this::class.java.classLoader.getResource(TestUtils.testFile).file
+                )),
                 TestUtils.testSession ?: fail("Invalid session"),
                 emitter) ?: fail("Failed to bind watch thread")
         println(System.currentTimeMillis())

@@ -62,7 +62,6 @@ dependencies {
 
     compile tepidDependency.kotlin
     compile tepidDependency.rxJava
-    compile tepidDependency.rxKotlin
 
     testCompile tepidDependency.junit
     testCompile tepidDependency.kotlinTest

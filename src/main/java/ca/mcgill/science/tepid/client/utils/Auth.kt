@@ -11,6 +11,13 @@ object Auth : WithLogging() {
 
     var props = FilePropLoader(PROP_PATH)
 
+    var tokenUser: String?
+        get() = props.get("TOKEN_USER")
+        set(value) = props.set("TOKEN_USER", value)
+
+    var tokenId: String?
+        get() = props.get("TOKEN_ID")
+        set(value) = props.set("TOKEN_ID", value)
 
     val token: String
         get() = "$tokenUser:$tokenId"
@@ -26,14 +33,6 @@ object Auth : WithLogging() {
 
     val hasToken: Boolean
         get() = tokenUser?.isNotBlank() == true && tokenId?.isNotBlank() == true
-
-    private var tokenUser: String? = null
-    private var tokenId: String? = null
-
-    init {
-        tokenUser = props.get("TOKEN_USER")
-        tokenId = props.get("TOKEN_ID")
-    }
 
     fun set(user: String?, id: String?): Auth {
         tokenUser = user

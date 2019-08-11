@@ -6,17 +6,18 @@ import ca.mcgill.science.tepid.client.internal.TestUtils
 import ca.mcgill.science.tepid.client.utils.ClientUtils
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.utils.WithLogging
-import org.junit.Assume
-import org.junit.Test
+import org.junit.jupiter.api.Assumptions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import java.io.File
 import java.io.FileInputStream
-import kotlin.test.fail
+
 
 class JobTest {
 
     companion object : WithLogging() {
         init {
-            Assume.assumeTrue("Testing job test", TestUtils.hasTestUser)
+            Assumptions.assumeTrue(TestUtils.hasTestUser, "Testing job test")
         }
 
         val emitter: EventObservable by lazy { TestEventObservable() }
@@ -25,7 +26,7 @@ class JobTest {
     @Test
     fun test() {
         val job = PrintJob(name = TestUtils.testUser,
-                queueName = "1B16",
+                queueName = "0",
                 originalHost = "Unit Test")
         val watchThread = ClientUtils.print(job,
                 FileInputStream(File(

@@ -1,11 +1,16 @@
 package ca.mcgill.science.tepid.client.utils
 
-import ca.allanwang.kit.props.PropHolder
-import ca.allanwang.kit.props.PropUtils
 import ca.mcgill.science.tepid.models.data.Session
+import ca.mcgill.science.tepid.utils.FilePropLoader
 import ca.mcgill.science.tepid.utils.WithLogging
 
+val propDir = if (Config.IS_WINDOWS) System.getenv("appdata") else System.getProperty("user.home")
+val PROP_PATH = "$propDir/.tepid"
+
 object Auth : WithLogging() {
+
+    var props = FilePropLoader(PROP_PATH)
+
 
     val token: String
         get() = "$tokenUser:$tokenId"
@@ -24,14 +29,10 @@ object Auth : WithLogging() {
 
     private var tokenUser: String? = null
     private var tokenId: String? = null
-    private val props: PropHolder = PropHolder(Config.PROP_PATH)
 
     init {
-        val token = props.get("token")?.split(":")
-        if (token?.size == 2) {
-            tokenUser = token[0]
-            tokenId = token[1]
-        }
+        tokenUser = props.get("TOKEN_USER")
+        tokenId = props.get("TOKEN_ID")
     }
 
     fun set(user: String?, id: String?): Auth {
@@ -42,8 +43,8 @@ object Auth : WithLogging() {
 
     fun save() {
         log.trace("Saving")
-        props.props.set("token", token)
-        PropUtils.saveProps(props.props, Config.PROP_PATH, "Tepid")
+        props.set("token", token)
+        props.saveProps()
     }
 
     fun clear() {

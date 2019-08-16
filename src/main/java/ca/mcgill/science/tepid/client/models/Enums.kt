@@ -9,6 +9,7 @@ enum class Fail(val error: PrintError, val icon: String) {
     INSUFFICIENT_QUOTA(PrintError.INSUFFICIENT_QUOTA, "noquota"),
     INVALID_DESTINATION(PrintError.INVALID_DESTINATION, "fail"),
     COLOR_DISABLED(PrintError.COLOR_DISABLED, "color"),
+    TOO_MANY_PAGES(PrintError.TOO_MANY_PAGES, "fail"),
     NO_INTERNET(PrintError.NO_INTERNET, "fail") ,
     ;
 

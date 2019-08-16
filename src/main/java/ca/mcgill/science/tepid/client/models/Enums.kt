@@ -1,7 +1,7 @@
 package ca.mcgill.science.tepid.client.models
 
-import ca.mcgill.science.tepid.models.bindings.PrintError
-import ca.mcgill.science.tepid.models.data.PrintJob
+import ca.mcgill.science.tepid.models.enums.PrintError
+
 
 enum class Fail(val display: String, val icon: String) {
     GENERIC("Generic Failure", "fail"),
@@ -23,10 +23,10 @@ enum class Fail(val display: String, val icon: String) {
          */
         fun fromText(printErrorText: String) : Fail{
             return when (printErrorText.toLowerCase()) {
-                PrintError.INSUFFICIENT_QUOTA -> Fail.INSUFFICIENT_QUOTA
-                PrintError.COLOR_DISABLED -> Fail.COLOR_DISABLED
-                PrintError.INVALID_DESTINATION -> Fail.INVALID_DESTINATION
-                else -> Fail.GENERIC
+                PrintError.INSUFFICIENT_QUOTA.display -> INSUFFICIENT_QUOTA
+                PrintError.COLOR_DISABLED.display -> COLOR_DISABLED
+                PrintError.INVALID_DESTINATION.display -> INVALID_DESTINATION
+                else -> GENERIC
             }
         }
     }

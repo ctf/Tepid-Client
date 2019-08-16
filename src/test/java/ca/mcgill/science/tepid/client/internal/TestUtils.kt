@@ -1,18 +1,15 @@
 package ca.mcgill.science.tepid.client.internal
 
 import ca.mcgill.science.tepid.test.TestUtilsDelegate
+import ca.mcgill.science.tepid.utils.PropsLDAPTestUser
+import ca.mcgill.science.tepid.utils.PropsURL
 import java.io.File
 
-object TestUtils : TestUtilsDelegate() {
-    val testFile: String? by lazy {
-        val testFile = get("TEST_FILE")
-        if (testFile?.isNotBlank() == true) {
-            val file = File("test_files/$testFile")
-            if (!file.isFile)
-                log.error("${file.absolutePath} is not a valid test file")
-            else
-                return@lazy file.absolutePath
-        }
-        null
-    }
+object TestUtils : TestUtilsDelegate(
+        PropsLDAPTestUser.TEST_USER,
+        PropsLDAPTestUser.TEST_PASSWORD,
+        PropsURL.SERVER_URL_PRODUCTION!!,
+        PropsURL.TESTING!!.toBoolean()
+) {
+    val testFile = "pdf-test.pdf"
 }

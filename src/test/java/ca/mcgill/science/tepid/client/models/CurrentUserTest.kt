@@ -1,6 +1,6 @@
 package ca.mcgill.science.tepid.client.models
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
 class CurrentUserTest {

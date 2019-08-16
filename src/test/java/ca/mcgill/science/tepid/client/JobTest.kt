@@ -5,19 +5,19 @@ import ca.mcgill.science.tepid.client.internal.TestEventObservable
 import ca.mcgill.science.tepid.client.internal.TestUtils
 import ca.mcgill.science.tepid.client.utils.ClientUtils
 import ca.mcgill.science.tepid.models.data.PrintJob
-import ca.mcgill.science.tepid.models.enums.Room
 import ca.mcgill.science.tepid.utils.WithLogging
-import org.junit.Assume
-import org.junit.Test
+import org.junit.jupiter.api.Assumptions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import java.io.File
 import java.io.FileInputStream
-import kotlin.test.fail
+
 
 class JobTest {
 
     companion object : WithLogging() {
         init {
-            Assume.assumeTrue("Testing job test", TestUtils.hasTestUser && TestUtils.testFile != null)
+            Assumptions.assumeTrue(TestUtils.hasTestUser, "Testing job test")
         }
 
         val emitter: EventObservable by lazy { TestEventObservable() }
@@ -26,14 +26,16 @@ class JobTest {
     @Test
     fun test() {
         val job = PrintJob(name = TestUtils.testUser,
-                queueName = Room._1B17.toString(),
+                queueName = "0",
                 originalHost = "Unit Test")
         val watchThread = ClientUtils.print(job,
-                FileInputStream(File(TestUtils.testFile)),
+                FileInputStream(File(
+                        this::class.java.classLoader.getResource(TestUtils.testFile).file
+                )),
                 TestUtils.testSession ?: fail("Invalid session"),
                 emitter) ?: fail("Failed to bind watch thread")
         println(System.currentTimeMillis())
-        watchThread.join()
+        watchThread()
         println(System.currentTimeMillis())
     }
 

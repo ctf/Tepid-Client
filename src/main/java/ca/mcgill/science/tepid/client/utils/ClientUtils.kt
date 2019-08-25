@@ -2,6 +2,7 @@ package ca.mcgill.science.tepid.client.utils
 
 import ca.mcgill.science.tepid.api.ITepid
 import ca.mcgill.science.tepid.api.TepidApi
+import ca.mcgill.science.tepid.api.addJobDataFromInput
 import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
@@ -9,6 +10,7 @@ import ca.mcgill.science.tepid.models.data.Destination
 import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
+import ca.mcgill.science.tepid.models.enums.PrintError
 import ca.mcgill.science.tepid.utils.WithLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -137,23 +139,30 @@ object ClientUtils : WithLogging() {
 
         log.debug("Sending job data for $jobId")
 
-        val response = tepidServerXz.path("jobs").path(jobId)
-                .request(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Token $authHeader")
-                .put(Entity.entity(stream, "application/x-xz"))
-
-        val responseMessage = response.readEntity(String::class.java)
-        log.debug("Job sent: $responseMessage")
-        val errorResponse = objectMapper.readValue<ErrorResponse>(responseMessage)
-        if (errorResponse.status > 0 && errorResponse.error.isNotEmpty()) {
-            job.fail(errorResponse.error) // we will emulate the failure change to stay consistent
-            return fun():Boolean {
+        fun failJob(failText: String = PrintError.GENERIC.display): () -> Boolean {
+            job.fail(failText) // we will emulate the failure change to stay consistent
+            return fun(): Boolean {
                 val fail = Fail.fromText(job.error!!) //job.fail will set this as non-null
                 emitter.notify(Failed(job.getId(), job, fail, "")) // todo
                 return false
             }
         }
-        return { watchJob(jobId, user, api, emitter) }
+
+        // TODO: implement to use ErrorResponse.
+        // The problem with a typed response (PutResponse) is that when an ErrorResponse is returned it will try to deserialize to the wrong type, resulting in a deserialization error. The correct thing to do is to set up retrofit to expect different things on failure or success
+        // Not to undermine the above, but this will only catch errors submitting the job to be printed, not any actual errors printing it.
+        try {
+            val response = api.addJobDataFromInput("jobId", stream).execute()
+            if (!response.isSuccessful){
+                return failJob()
+            }
+            log.debug("Job sent: ${response.body()}")
+
+            return { watchJob(jobId, user, api, emitter) }
+        } catch (e: Exception){
+
+            return failJob()
+        }
     }
 
     /**

@@ -7,25 +7,15 @@ import ca.mcgill.science.tepid.api.executeDirect
 import ca.mcgill.science.tepid.client.interfaces.EventObservable
 import ca.mcgill.science.tepid.client.models.*
 import ca.mcgill.science.tepid.models.data.Destination
-import ca.mcgill.science.tepid.models.data.ErrorResponse
 import ca.mcgill.science.tepid.models.data.PrintJob
 import ca.mcgill.science.tepid.models.data.Session
 import ca.mcgill.science.tepid.models.enums.PrintError
 import ca.mcgill.science.tepid.utils.WithLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import org.glassfish.jersey.jackson.JacksonFeature
-import org.tukaani.xz.LZMA2Options
-import org.tukaani.xz.XZOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.lang.Math.pow
 import java.util.*
-import javax.ws.rs.client.ClientBuilder
-import javax.ws.rs.client.Entity
-import javax.ws.rs.client.WebTarget
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.ext.WriterInterceptor
 
 class ClientException(message: String) : RuntimeException(message)
 
@@ -89,19 +79,6 @@ object ClientUtils : WithLogging() {
         } finally {
             stream.close()
         }
-    }
-
-    /**
-     * Target used to compress file stream
-     */
-    private val tepidServerXz: WebTarget by lazy {
-        ClientBuilder.newBuilder()
-                .register(JacksonFeature::class.java)
-                .register(WriterInterceptor { ctx ->
-                    val output = ctx.outputStream
-                    ctx.outputStream = XZOutputStream(output, LZMA2Options())
-                    ctx.proceed()
-                }).build().target(Config.SERVER_URL)
     }
 
     /**

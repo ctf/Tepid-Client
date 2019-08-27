@@ -3,14 +3,18 @@ package ca.mcgill.science.tepid.client.models
 import ca.mcgill.science.tepid.models.enums.PrintError
 
 
-enum class Fail(val display: String, val icon: String) {
-    GENERIC("Generic Failure", "fail"),
-    IMMEDIATE("Print Failure", "fail"),
-    INSUFFICIENT_QUOTA("Insufficient Quota", "noquota"),
-    INVALID_DESTINATION("Invalid Destination", "fail"), // todo update
-    COLOR_DISABLED("Color disabled", "color"),
-    NO_INTERNET("No Internet Detected", "fail") // todo update
+enum class Fail(val error: PrintError, val icon: String) {
+    GENERIC(PrintError.GENERIC, "fail"),
+    IMMEDIATE(PrintError.IMMEDIATE, "fail"),
+    INSUFFICIENT_QUOTA(PrintError.INSUFFICIENT_QUOTA, "noquota"),
+    INVALID_DESTINATION(PrintError.INVALID_DESTINATION, "fail"),
+    COLOR_DISABLED(PrintError.COLOR_DISABLED, "color"),
+    TOO_MANY_PAGES(PrintError.TOO_MANY_PAGES, "fail"),
+    NO_INTERNET(PrintError.NO_INTERNET, "fail") ,
     ;
+
+    val display: String
+        get() = this.error.display
 
     companion object {
 
@@ -21,14 +25,9 @@ enum class Fail(val display: String, val icon: String) {
          *  - a not-null assertion operator ```Fail.fromText(job.error!!)```, common in the case of invoking job.fail(error:String), which only takes non-null strings
          *  - a short circuit ```Fail.fromText(job.error ?: "")```, for when one cannot guarantee a non-null error field with a non-null failed field
          */
-        fun fromText(printErrorText: String) : Fail{
-            return when (printErrorText.toLowerCase()) {
-                PrintError.INSUFFICIENT_QUOTA.display -> INSUFFICIENT_QUOTA
-                PrintError.COLOR_DISABLED.display -> COLOR_DISABLED
-                PrintError.INVALID_DESTINATION.display -> INVALID_DESTINATION
-                else -> GENERIC
-            }
-        }
+        private val map = Fail.values().associateBy{T->T.display}
+        fun fromText(printErrorText: String) : Fail = map[printErrorText] ?: Fail.GENERIC
+
     }
 }
 

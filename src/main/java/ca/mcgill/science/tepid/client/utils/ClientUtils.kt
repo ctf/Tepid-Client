@@ -129,7 +129,7 @@ object ClientUtils : WithLogging() {
         // The problem with a typed response (PutResponse) is that when an ErrorResponse is returned it will try to deserialize to the wrong type, resulting in a deserialization error. The correct thing to do is to set up retrofit to expect different things on failure or success
         // Not to undermine the above, but this will only catch errors submitting the job to be printed, not any actual errors printing it.
         try {
-            val response = api.addJobDataFromInput("jobId", stream).execute()
+            val response = api.addJobDataFromInput(jobId, stream).execute()
             if (!response.isSuccessful){
                 return failJob()
             }

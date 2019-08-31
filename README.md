@@ -2,6 +2,8 @@
 
 Client program to bind printers and send jobs to TEPID-server
 
+[![BugSnag](https://img.shields.io/badge/Bug%20tracking%20with-BugSnag-37C2D9.svg)](https://www.bugsnag.com/)
+
 ### Test
 
 Client is able to run directly from the main method, 

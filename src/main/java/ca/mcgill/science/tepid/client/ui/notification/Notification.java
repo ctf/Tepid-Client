@@ -1,5 +1,6 @@
 package ca.mcgill.science.tepid.client.ui.notification;
 
+import ca.mcgill.science.tepid.client.utils.Config;
 import ca.mcgill.science.tepid.common.Utils;
 import com.io.jimm.StringUtils;
 
@@ -13,6 +14,8 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -153,6 +156,14 @@ public class Notification extends JWindow {
             public void mouseReleased(MouseEvent e) {
                 if (e.getX() > content.getWidth() - 24 && e.getY() < 24) {
                     close();
+                } else {
+                    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                        try {
+                            Desktop.getDesktop().browse(new URI(Config.INSTANCE.getWEB_URL()));
+                        } catch (IOException | URISyntaxException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                 }
             }
         });

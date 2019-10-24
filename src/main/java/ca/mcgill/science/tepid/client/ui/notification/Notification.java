@@ -159,7 +159,7 @@ public class Notification extends JWindow {
                 } else {
                     if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                         try {
-                            Desktop.getDesktop().browse(new URI(Config.INSTANCE.getSERVER_URL()));
+                            Desktop.getDesktop().browse(new URI(Config.INSTANCE.getWEB_URL()));
                         } catch (IOException | URISyntaxException ex) {
                             ex.printStackTrace();
                         }

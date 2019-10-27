@@ -198,8 +198,9 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 //transition to printed
                 if (job.printed != -1L){
                     status = Status.PRINTED
-                    val quota = api.getQuota(user).executeDirect()
-                    if (quota != null) {
+                    val quotaData = api.getQuota(user).executeDirect()
+                    if (quotaData != null) {
+                        val quota = quotaData.quota
                         val oldQuota = quota + job.colorPages * 2 + job.pages
                         emitter.notify(Completed(jobId, job, getDestinations()[job.destination!!]!!, oldQuota, quota))
                     }

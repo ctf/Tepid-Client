@@ -59,7 +59,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         if (Auth.hasToken) {
             api.getQuota(Auth.user).fetch { data, _ ->
                 data ?: return@fetch
-                initialize(Init(data))
+                initialize(Init(data.quota))
             }
         }
 

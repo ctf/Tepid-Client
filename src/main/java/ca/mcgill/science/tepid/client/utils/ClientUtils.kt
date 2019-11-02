@@ -181,7 +181,7 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
 //====If Failed================================================
             if (job.failed != -1L){
                 val fail = Fail.fromText(job.error ?: "") //might actually null, but still failed
-                emitter.notify(Failed(job.getId(), job, fail, "")) // todo: add help message text from screensaver's config
+                emitter.notify(Failed(job.getId(), job, fail, fail.body))
                 return false
             }
 
@@ -198,8 +198,9 @@ class JobWatcher(val api: ITepid, val emitter: EventObservable) : WithLogging() 
                 //transition to printed
                 if (job.printed != -1L){
                     status = Status.PRINTED
-                    val quota = api.getQuota(user).executeDirect()
-                    if (quota != null) {
+                    val quotaData = api.getQuota(user).executeDirect()
+                    if (quotaData != null) {
+                        val quota = quotaData.quota
                         val oldQuota = quota + job.colorPages * 2 + job.pages
                         emitter.notify(Completed(jobId, job, getDestinations()[job.destination!!]!!, oldQuota, quota))
                     }

@@ -26,7 +26,7 @@ class JobTest {
     @Test
     fun test() {
         val job = PrintJob(name = TestUtils.testUser,
-                queueName = "0",
+                queueId = "q0",
                 originalHost = "Unit Test")
         val watchThread = ClientUtils.print(job,
                 FileInputStream(File(

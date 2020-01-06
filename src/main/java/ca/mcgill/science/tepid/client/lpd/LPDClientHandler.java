@@ -52,7 +52,7 @@ public class LPDClientHandler extends Thread {
                     case 0x2:
                         System.out.println("2 Receive Job");
                         System.out.println("Queue " + params);
-                        printJob.setQueueName(params);
+                        printJob.setQueueId(params);
                         //from here on we process receive job subcommands
                         out.write(ack);
                         while ((line = in.readLine()) != null) {

@@ -64,12 +64,12 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         }
 
         var defaultQueue: String? = null
-        val queueIds: Map<String, String> = queues.mapNotNull {
-            val name = it.name ?: return@mapNotNull null
+        val queueIds: Map<String, String> = queues.values.mapNotNull {
+            val id = it._id ?: return@mapNotNull null
             val defaultOn = it.defaultOn
             if (defaultOn != null && ClientUtils.wildcardMatch(defaultOn, ClientUtils.hostname))
-                defaultQueue = name
-            ClientUtils.newId() to name
+                defaultQueue = id
+            ClientUtils.newId() to id
         }.toMap()
 
         try {
@@ -81,7 +81,7 @@ class Client private constructor(observers: Array<out EventObserver>) : EventObs
         try {
             LPDServer(if (Config.IS_WINDOWS) 515 else 8515).use { lpd ->
                 lpd.addJobListener { job, input ->
-                    job.queueName = queueIds[job.queueName]
+                    job.queueId = queueIds[job.queueId]
                     log.info("Starting job for ${job.name}")
                     val session = getValidSession()
                     if (session == null) {

@@ -1,5 +1,5 @@
 group 'ca.mcgill.science.ctf.tepid'
-version '1.4.0'
+version '1.5.0'
 
 buildscript {
 
